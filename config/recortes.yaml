@@ -1,0 +1,27 @@
+# T2.7 - Recortes por etapa (EF2 / EM). Valores de `etapa` usados nas tabelas agregadas.
+# Etapas: EF1, EF2, EM, EF2_EM (nivel misto: EF + 1o ano do EM ou ate o 3o), tecnico_superior, superior.
+# no_escopo = etapa em {EF2, EM, EF2_EM}.
+escopo: [EF2, EM, EF2_EM]
+bases_com_etapa_nativa: {saeb_escola: "EF2 (9o ano) / EM (3a serie)", ideb_escola: "EF2 (anos finais) / EM", ideb_municipio: "EF2 / EM"}
+enem:
+  etapa: EM
+  tp_st_conclusao_incluidos: [1, 2]   # 1 ja concluiu EM; 2 cursando e conclui no ano. 3 (conclui depois) e 4 excluidos
+  limitacao: "IN_TREINEIRO nao esta em enem_all.parquet; treineiros (cursando antes da 3a serie) caem em tp_st_conclusao=3 ou 2"
+# fonte: regulamentos oficiais (OBMEP; OBI https://olimpiada.ic.unicamp.br/info/regulamento/), consultados em 02/10/2026.
+# Aplicados a TODOS os anos (premissa: niveis estaveis; nao verificado para 2016-2019).
+medalhistas:
+  OBMEP:
+    "1": {etapa: EF2, serie: "6o-7o ano EF"}
+    "2": {etapa: EF2, serie: "8o-9o ano EF"}
+    "3": {etapa: EM,  serie: "Ensino Medio"}
+  OBI:
+    "Iniciação":
+      "Júnior": {etapa: EF1, serie: "4o-5o ano EF"}
+      "1": {etapa: EF2, serie: "6o-7o ano EF"}
+      "2": {etapa: EF2, serie: "8o-9o ano EF"}
+    "Programação":      # tambem vale para "CF-OBI Programação" (regulamento nao define series distintas)
+      "Júnior": {etapa: EF2, serie: "8o-9o ano EF"}
+      "1": {etapa: EF2_EM, serie: "EF e 1o ano EM"}
+      "2": {etapa: EF2_EM, serie: "EF e ate 3o ano EM"}
+      "Sênior": {etapa: tecnico_superior, serie: "4o ano tecnico ou 1o ano superior"}
+    "Universitária": {etapa: superior, serie: "ensino superior"}

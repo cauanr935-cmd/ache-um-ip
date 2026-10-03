@@ -1,0 +1,2 @@
+# Modelo de config/lgpd.yaml (o real fica fora do Git). Gere o sal com: python -c "import secrets;print(secrets.token_hex(32))"
+sal: "TROQUE-POR-64-HEX"

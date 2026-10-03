@@ -1,0 +1,59 @@
+checagem,resultado,valor encontrado,esperado
+ENEM anos em raw/interim,FALHA,2023-2025 (3/10),2016-2025
+OBMEP anos,FALHA,2016-19 2024 2025 (6/10),10 anos
+OBI anos,FALHA,9/10 (sem 2018),10 anos
+ONHB coletada,FALHA,0,10 anos
+Censo Escolar / Catalogo em raw,FALHA,ausente,presente
+interim/ideb inse taxa_rendimento .parquet,FALHA,so ideb_escola e ideb_municipio,3 arquivos
+dim_municipio dim_escola dim_aluno fato_* em processed,FALHA,inexistentes,5 tabelas
+processed/v1 e .duckdb,FALHA,inexistentes,presentes
+notebook Colab,FALHA,inexistente (notebooks/ so .gitkeep),ache_um_ip_colab.ipynb
+CLAUDE.md na raiz,FALHA,inexistente,presente
+docs dicionario_dados linhagem contrato_dados relatorio_resultados,FALHA,inexistentes,4 docs
+docs/lgpd.md,FALHA,inexistente mas referenciado em src/docs_processed.py,presente
+lgpd.assert_sem_nomes,FALHA,citada no docstring mas inexistente,funcao existente
+Arquivos parquet/csv abrem sem erro,OK,29/29,29/29
+Chave municipio 7 digitos string,OK,0 invalidos,0
+Chave escola 8 digitos string,OK,0 invalidos,0
+PK unicas (dim_*_base aluno_dedup agg_*),OK,unicas,unicas
+Orfaos municipio/escola vs dim base,OK (trivial p/ escola),0,0
+Duplicatas exatas,OK,0,0
+Notas ENEM 0-1000,OK,max 980.3 (MT) 1000 (redacao),0-1000
+Ideb 0-10,OK,0.1-9.5 escola; 0.3-9.3 municipio,0-10
+Indice potencial em [0 1],OK,0.075-0.978,0-1
+Proxy renda recalculada do zero,OK,90.52% 90.91% 91.17% (bate com doc),igual ao doc
+Proxy renda poder discriminante,ALERTA,saturado ~90%,variavel
+Supressao rankings e agg_*,OK,0 violacoes,0
+Supressao taxa_medalhas_100k em municipio_features,FALHA,2659 municipios com n<10 e taxa>0 publicada alimentando c_talento,0
+Supressao saeb_escola 2017,FALHA,1936 escolas n_alunos<10 com proficiencia publicada,0
+Duplicidade (entidade tipo recorte metrica) em rankings,OK,0 duplicatas,0
+Contrato T5.5 uma metrica por municipio por recorte,FALHA,ate 5 metricas em recorte geral; ate 3 em EF2/EM,1
+Empates em rankings,FALHA,Ideb EF2 escola 33448 linhas 80 ranks distintos,desempate definido
+Anos > 10 anos em interim,FALHA,agg_proficiencia 2005-2015 197223 linhas; ideb 2005-2025,2016+
+Anos > 10 anos em processed,NAO VERIFICADO,sem coluna de ano em rankings/features/residuos,
+Nome de aluno em claro em data/processed,OK,0 colunas; so nomes de escola/municipio,0
+Nome de aluno em claro em data/interim,ALERTA (esperado),335281 linhas em medalhistas etc; ignorado pelo git,so interim e fora do git
+.gitignore raw e interim,OK,presentes,presentes
+Sal fora do git,OK,config/lgpd.yaml ignorado (check-ignore) perm 600,fora do git
+.env no historico,OK,0 bytes nos commits 990394a e 8a8a07c,sem segredo
+src config docs processed versionados,FALHA,untracked; sem commit desde c58f3cd,versionado
+Credenciais/tokens,OK,nenhum,0
+Caminhos absolutos pessoais,OK,nenhum (ACHE_RAIZ),0
+E-mail pessoal em codigo,BAIXO,src/coleta_obmep.py:31 User-Agent,sem PII
+Dados do Instituto Ponte acessados,OK,nenhum,nenhum
+Dados inventados/placeholders,OK,nenhum; rotulos sinteticos so em teste declarado,nenhum
+Numeros do relatorio vs dados (20),OK com ressalva,18 batem; ideb_escola 498814 vs 498809; OBMEP sem_match 16.4 vs 16.3,0 divergencias
+Numeros de regressao/clusters em avaliacao.md,NAO VERIFICADO,exige reexecutar modelagem (grava em data/),
+Sintaxe src/,OK,ast.parse 26/26 imports ok,sem erro
+Lint ruff/pyflakes,NAO VERIFICADO,ferramentas nao instaladas,
+Dependencias vs requirements.txt,FALHA,scipy e numpy ausentes,todas listadas
+Seeds,OK,random_state=42 K-Means CV amostragem,fixas
+run_fase2..run_faseN parametrizadas por ano,FALHA,so run_fase4 e run_fase5,todas
+Execucao do notebook/pipeline,NAO EXECUTADO,notebook inexistente; pipeline grava em data/ e sobrescreveria amostra_rotulagem.csv,
+Amostra rotulagem preenchida,FALHA,0/200,>=50
+Precisao/recall do linkage reais,FALHA,inexistentes,medidos
+Fila de revisao manual decidida,FALHA,5505 linhas 0 decisoes,
+Metricas silhouette DB R2 RMSE MAE,OK,implementadas com saida em docs/avaliacao.md,presentes
+config/pesos.yaml com justificativa,OK,0.5/0.2/0.3,presente
+Componente talento sem vies populacional,FALHA,c_talento 0.58 (0 medalhas pop<=3.8k) > 0.447 (1 medalha),monotonico
+amostra_rotulagem sobrescrita por run_fase5,FALHA,avaliacao.py:31-51,nao sobrescrever

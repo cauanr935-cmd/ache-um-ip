@@ -1,0 +1,29 @@
+# T2.5 - Proxy de renda per capita (ENEM). Faixa DECLARADA (Q006 em 2023, Q007 em 2024+), nao valor exato.
+# As faixas A-Q do ENEM sao multiplos do salario minimo (SM) do ano: os limites abaixo estao em SM e valem para
+# os tres anos (conferido nos dicionarios 2023/2024/2025). O SM so e usado para converter em R$.
+salario_minimo_reais:      # referencia = SM usado pelo INEP para montar as faixas do questionario do ano
+  2023: 1320
+  2024: 1412
+  2025: 1518
+limite_per_capita_sm: 1.5  # RF 5.4: renda familiar per capita <= 1,5 SM
+# faixa: intervalo (lim_inf, lim_sup] em SM; ponto_medio em SM.
+# A = nenhuma renda -> 0. Q = "acima de 20 SM", faixa aberta: ponto medio = 1,25 x limite inferior = 25 SM (escolha
+# arbitraria, documentada em docs/renda_proxy.md); lim_sup = null (infinito) para o intervalo.
+faixas:
+  A: {lim_inf: 0,  lim_sup: 0,    ponto_medio: 0}
+  B: {lim_inf: 0,  lim_sup: 1,    ponto_medio: 0.5}
+  C: {lim_inf: 1,  lim_sup: 1.5,  ponto_medio: 1.25}
+  D: {lim_inf: 1.5, lim_sup: 2,   ponto_medio: 1.75}
+  E: {lim_inf: 2,  lim_sup: 2.5,  ponto_medio: 2.25}
+  F: {lim_inf: 2.5, lim_sup: 3,   ponto_medio: 2.75}
+  G: {lim_inf: 3,  lim_sup: 4,    ponto_medio: 3.5}
+  H: {lim_inf: 4,  lim_sup: 5,    ponto_medio: 4.5}
+  I: {lim_inf: 5,  lim_sup: 6,    ponto_medio: 5.5}
+  J: {lim_inf: 6,  lim_sup: 7,    ponto_medio: 6.5}
+  K: {lim_inf: 7,  lim_sup: 8,    ponto_medio: 7.5}
+  L: {lim_inf: 8,  lim_sup: 9,    ponto_medio: 8.5}
+  M: {lim_inf: 9,  lim_sup: 10,   ponto_medio: 9.5}
+  N: {lim_inf: 10, lim_sup: 12,   ponto_medio: 11}
+  O: {lim_inf: 12, lim_sup: 15,   ponto_medio: 13.5}
+  P: {lim_inf: 15, lim_sup: 20,   ponto_medio: 17.5}
+  Q: {lim_inf: 20, lim_sup: null, ponto_medio: 25}

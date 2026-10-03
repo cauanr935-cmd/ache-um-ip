@@ -1,0 +1,18 @@
+# Parametros do record linkage medalhista -> escola (src/linkage.py). Ver docs/linkage.md
+scorer: token_set_ratio        # rapidfuzz.fuzz; unico scorer principal
+limiar_auto: 90                # score >= limiar_auto (e guardas ok, sem empate) => vinculo automatico
+limiar_revisao: 80             # limiar_revisao <= score < limiar_auto => fila de revisao manual; abaixo => sem match
+margem_empate: 2.0             # outro candidato (outra escola) com score >= limiar_auto e dentro desta margem...
+margem_empate_secundario: 5.0  # ...E com fuzz.ratio (nomes completos) dentro desta margem => empate => revisao
+guarda_numerica: true           # conjuntos de numeros/romanos (>= II) diferentes entre os nomes => score limitado (revisao)
+conflito_dependencia: true     # ESTADUAL x MUNICIPAL x FEDERAL explicitos e diferentes nos dois nomes => score limitado (revisao)
+usar_rede: true                # restringe candidatos pela rede do medalhista quando conhecida
+rede_publica: [F, E, M]        # OBMEP: federal/estadual/municipal -> escolas publicas do dim_escola_base
+rede_privada: [P]              # OBMEP: privada -> escolas privadas. Codigo C (outros) e OBI (sem rede): sem restricao
+guarda_subconjunto:            # token_set_ratio vale 100 quando um nome e subconjunto do outro => guardas extras
+  ativa: true
+  min_token_sort_nucleo: 60    # token_sort_ratio entre os nucleos (nome sem palavras genericas) >= este valor
+  min_token_set_nucleo: 85     # token_set_ratio entre os nucleos >= este valor (barra 'SANTA LUZIA' x 'SANTA FE')
+  min_razao_comprimento_nucleo: 0.5   # min(len)/max(len) dos nucleos >= este valor
+  # se a guarda falhar, o score e limitado a (limiar_auto - 0.1): vai para a revisao, nunca para auto
+top_candidatos: 3              # candidatos listados na fila de revisao

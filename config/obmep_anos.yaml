@@ -1,0 +1,5 @@
+# Anos das edicoes da OBMEP cujas paginas de premiacao NAO informam o ano
+# (16a, 17a e 18a OBMEP). O ano nao e inferido pelo numero da edicao: preencha so
+# com confirmacao da fonte oficial. Formato:  "<rotulo em premiados.htm>": <ano>
+# Exemplo (NAO confirmado, nao ativo):
+# "16ª OBMEP": 2021

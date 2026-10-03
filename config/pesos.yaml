@@ -1,0 +1,48 @@
+# T3.2 - Indice de potencial por municipio (src/modelagem.py). Ver docs/avaliacao.md §2.
+# Indice = soma ponderada (pesos abaixo, renormalizados entre os componentes disponiveis) de tres componentes,
+# cada um em [0,1].
+# Normalizacao: PERCENTIL POR RANK (rank medio nos empates, / n). Escolha: as taxas de medalha sao muito
+# assimetricas e inflacionadas de zeros (a maioria dos municipios tem 0 medalhas); min-max seria dominado por
+# poucos outliers. A alternativa min-max e calculada em src/avaliacao.py (T4.3) para medir o efeito da escolha.
+normalizacao: rank        # rank | minmax
+
+componentes:
+  talento:
+    peso: 0.50
+    metrica: taxa de medalhas (Ouro+Prata+Bronze, OBMEP+OBI, EF2/EM, todos os anos coletados) por 100 mil hab.
+    sinal: +1             # maior taxa => maior potencial
+    justificativa: >
+      Unica evidencia direta de talento observado. Recebe o maior peso porque o objetivo do IP e achar
+      onde o talento ja aparece. Taxa suavizada (encolhimento bayesiano, ver abaixo) para que municipios
+      pequenos com 1 medalha nao liderem o ranking por acaso. Mencao Honrosa fica fora (nao e medalha).
+  qualidade_rede:
+    peso: 0.20
+    metrica: media dos percentis de nota Saeb padronizada e Ideb (rede publica, EF2 e EM, edicao mais recente por municipio)
+    sinal: +1             # DECISAO DE NEGOCIO: +1 = rede forte = ambiente que forma candidatos aptos. Troque para -1 para priorizar redes carentes.
+    justificativa: >
+      Proxy da capacidade da rede de sustentar o aluno ate o ingresso e a permanencia no IP. Peso menor porque
+      ja esta parcialmente refletida no talento (medalhas) e porque o sinal e ambiguo: rede fraca tambem
+      indica necessidade. Sinal e parametro explicito para o IP decidir.
+  vulnerabilidade:
+    peso: 0.30
+    metrica: "mediana da renda familiar per capita (SM) dos participantes do ENEM (concluintes de EM), suavizada; menor renda => maior vulnerabilidade"
+    sinal: +1             # +1 = menor renda per capita => maior prioridade
+    justificativa: >
+      Foco do IP em alunos de baixa renda (RF 5.4: renda per capita <= 1,5 SM). Usa a MEDIANA da renda per capita
+      e nao o % <= 1,5 SM: esse % satura (media de 95% e 100% em ~1,5 mil municipios pequenos), sem poder de ordenar.
+      O % <= 1,5 SM segue publicado em rankings.parquet (pct_renda_pc_le_1_5). Peso intermediario: e criterio
+      de elegibilidade/priorizacao, mas nao e evidencia de talento. INSE do Saeb NAO entra: os ids de municipio
+      do Saeb sao mascarados e nao ligam ao codigo IBGE (docs/lacunas_saeb.md §1). Renda e proxy por faixa
+      declarada (ponto medio), ver docs/renda_proxy.md.
+
+# Renda per capita suavizada: (n*mediana + k*media_nacional)/(n+k), k = participantes. Reduz ruido de municipios com n pequeno.
+suavizacao_renda_n: 30
+# Taxa de medalhas suavizada: (medalhas + a * taxa_nacional) / (populacao + a). `a` em habitantes.
+suavizacao_talento_pop: 20000
+# Minimo de componentes disponiveis para o municipio receber indice. 3 = so municipios com os tres componentes.
+# Com 2, a renormalizacao dos pesos faz municipios SEM dado de renda (ENEM < 10 participantes) liderarem o ranking so por
+# nao terem o componente "vulneravel" que puxa a nota para baixo nos grandes centros (viés de dado faltante, visto no T4.4).
+# Municipios sem os tres componentes ficam sem indice (NaN) e aparecem como "sem dados suficientes".
+min_componentes: 3
+# Supressao (config/supressao.yaml): taxa de medalhas so e publicada em rankings.parquet se n_medalhas >= n_min.
+n_min_publicacao: 10

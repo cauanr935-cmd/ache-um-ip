@@ -1,1 +1,8 @@
 .env
+data/raw/
+data/interim/
+.venv/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+config/lgpd.yaml

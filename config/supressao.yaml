@@ -1,0 +1,15 @@
+# T2.9 - Supressao estatistica. n = numero de registros-base da celula (inscritos, linhas com nota, medalhas...).
+# Onde n < n_min as metricas viram nulo e suprimido=True; n e mantido (uso interno).
+# Atencao: quando a propria contagem e a metrica (agg_medalhas_municipio), use a coluna n_publicavel para exposicao.
+n_min_padrao: 10
+n_min_por_tabela:
+  agg_enem_municipio: 10
+  agg_medalhas_municipio: 10
+  agg_proficiencia_uf: 10
+  agg_proficiencia_municipio: 10   # Ideb nao informa n; so se aplica se n existir (herdado do INEP: 'ND')
+  agg_proficiencia_escola: 10
+# Outliers (ENEM): regras em src/agregacoes.py e docs/agregacoes.md
+outliers:
+  nota_objetiva_zero_invalida: true   # CN/CH/LC/MT == 0 -> nulo (TRI nao gera 0; zero = prova zerada/eliminada)
+  redacao_zero_valida: true           # redacao 0 (anulada/em branco) e valida; reportado em pct_redacao_zero
+  nota_max: 1000
