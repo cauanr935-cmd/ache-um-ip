@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ache um Ip!</title>
+    <link rel="stylesheet" href="../css/style.css">
+
+    <script async src="https://accounts.google.com/gsi/client"></script>
+    <script defer src="../js/usuario.js"></script>
+    <script defer src="../js/login.js"></script>
+
+    <noscript>Esse site requer JavaScript para funcionar.</noscript>
+</head>
+<body>
+    
+    <header class="header-site">
+        <div class="header-interno">
+            <a href="./dashboard.html" class="logo">
+                <div class="logo-titulo">Ache um IP</div>
+                <div class="linha-fina">Projeto Universitário 2026 - Grupo 5</div>
+            </a>
+
+            <nav class="nav-header-list">
+                <a href="">Home</a>
+                <a href="">Sobre o Projeto</a>
+            </nav>
+
+            <div class="perfil-header">
+                <div id="usuarioNomeHeader" class="perfil-nome">Nome</div>
+                <img id="usuarioFotoPerfilHeader" src="../assets/placeholder_usuario.png" alt="foto de perfil" class="foto-perfil">
+            </div>
+
+        </div>
+    </header>
+
+    <div class="container-principal">
+        <div class="container container-login">
+            <h2 class="text-center">Login</h2>
+            <div class="login-ou-continuar">
+                <div id="informeLogin"></div>
+
+                <div id="opcaoFazerLogin" class="container-google">
+                    <!-- Usado para carregar a configuração do GIS (pode ficar invisível ou vazio) -->
+                    <div id="g_id_onload"></div>
+
+                    <!-- Usado para renderizar o botão do Google -->
+                    <!-- <div id="g_id_signin"></div> -->
+                </div>
+
+                <div id="opcaoContinuar" class="container container-informacoes-usuario">
+                    <img id="usuarioFotoPerfil" class="foto-perfil" src="../assets/placeholder_usuario.png"/>
+                    <div class="item-dado">
+                        <p class="label-dado">Nome:</p>
+                        <p id="usuarioNome" class="campo-dado">Sem nome</p>
+                    </div>
+                    
+                    <div class="item-dado">
+                        <p class="label-dado">Sobrenome:</p>
+                        <p id="usuarioSobrenome" class="campo-dado">Sem nome</p>
+                    </div>
+
+                    <div class="item-dado">
+                        <p class="label-dado">Nome completo:</p>
+                        <p id="usuarioNomeCompleto" class="campo-dado">Sem nome</p>
+                    </div>
+
+                    <div class="item-dado">
+                        <p class="label-dado">ID:</p>
+                        <p id="usuarioID" class="campo-dado">id</p>
+                    </div>
+
+                    <div class="item-dado">
+                        <p class="label-dado">Email: </p>
+                        <p id="usuarioEmail" class="campo-dado"></p>
+                    </div>
+
+                    <div class="item-dado">
+                        <p class="label-dado">Email é verificado?</p>
+                        <p id="usuarioEmailVerificado" class="campo-dado"></p>
+                    </div>
+
+                    <div class="item-dado">
+                        <p class="label-dado">Começo da Sessão:</p>
+                        <p id="usuarioComecoSessao" class="campo-dado"></p>
+                    </div>
+
+                    <div class="item-dado">
+                        <p class="label-dado">Vencimento da Sessão:</p>
+                        <p id="usuarioVencimentoSessao" class="campo-dado"></p>
+                    </div>
+
+                    <button id="continuarInformacoesUsuario">
+                        Continuar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    
+</body>
+</html>
