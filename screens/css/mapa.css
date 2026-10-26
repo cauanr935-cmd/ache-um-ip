@@ -1,0 +1,512 @@
+/* Mapa do Brasil. As cores do mapa de calor ficam em variáveis para trocar fácil. */
+
+:root {
+    --mapa-classe-1: #efe9f7;
+    --mapa-classe-2: #cdbfe6;
+    --mapa-classe-3: #a893d1;
+    --mapa-classe-4: #7a5db3;
+    --mapa-classe-5: #4a2a86;
+    --mapa-sem-dado: #d4d4d4;
+    --mapa-borda: #ffffff;
+    --mapa-foco: #111111;
+    --roxo-marca: hsl(270, 74%, 18%);
+}
+
+.pagina-mapa {
+    width: 100%;
+}
+
+.layout-mapa {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 340px;
+    gap: 1em;
+    max-width: 1400px;
+    margin: 1em auto;
+    padding: 0 1em;
+    min-height: calc(100vh - 50px - 2em);
+}
+
+.area-mapa,
+.painel-lateral {
+    background-color: white;
+    border-radius: 10px;
+    padding: 1em;
+}
+
+.barra-mapa {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1em;
+    flex-wrap: wrap;
+    margin-bottom: 0.5em;
+}
+
+.breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+}
+
+.breadcrumb ol {
+    list-style: none;
+    display: flex;
+    gap: 0.4em;
+    flex-wrap: wrap;
+}
+
+.breadcrumb li + li::before {
+    content: ">";
+    margin-right: 0.4em;
+    color: #555;
+}
+
+.breadcrumb button.item-breadcrumb {
+    background: none;
+    border: 0;
+    color: var(--roxo-marca);
+    font-size: 1em;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.breadcrumb [aria-current="page"] {
+    font-weight: 700;
+}
+
+.botao-secundario,
+.controles-zoom button {
+    background-color: white;
+    border: 1px solid #888;
+    border-radius: 6px;
+    color: #111;
+    cursor: pointer;
+    font-size: 1em;
+    padding: 0.3em 0.7em;
+}
+
+button:focus-visible,
+a:focus-visible,
+svg:focus-visible {
+    outline: 3px solid var(--mapa-foco);
+    outline-offset: 2px;
+}
+
+/* Dentro do SVG o outline escalaria com o zoom; o foco vira traço de largura fixa na tela. */
+.uf:focus-visible,
+.municipio:focus-visible {
+    outline: none;
+    stroke: var(--mapa-foco);
+    stroke-width: 3px;
+}
+
+.aviso-mock {
+    background-color: #fff3cd;
+    border-radius: 6px;
+    color: #5c4400;
+    font-size: 0.85em;
+    padding: 0.2em 0.6em;
+}
+
+.moldura-mapa {
+    position: relative;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background-color: #f6f8fb;
+    overflow: hidden;
+}
+
+#mapa {
+    display: block;
+    width: 100%;
+    height: min(72vh, 760px);
+    touch-action: none; /* o d3-zoom cuida do pan e do pinch */
+    cursor: grab;
+}
+
+#mapa:active {
+    cursor: grabbing;
+}
+
+.uf {
+    stroke: var(--mapa-borda);
+    stroke-linejoin: round;
+    cursor: pointer;
+    transition: fill 0.2s;
+}
+
+.uf:hover,
+.uf.selecionada {
+    stroke: #111;
+}
+
+/* Rótulo da sigla: o contorno branco mantém o contraste sobre qualquer classe. */
+.rotulo-uf {
+    font-size: 11px;
+    font-weight: 700;
+    paint-order: stroke;
+    stroke: #fff;
+    stroke-width: 3px;
+    pointer-events: none;
+    text-anchor: middle;
+}
+
+.controles-zoom {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.controles-zoom button {
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    font-size: 1.2em;
+}
+
+.tooltip-mapa {
+    position: absolute;
+    background-color: #111;
+    color: #fff;
+    border-radius: 6px;
+    padding: 0.4em 0.7em;
+    font-size: 0.85em;
+    pointer-events: none;
+    white-space: nowrap;
+    z-index: 5;
+}
+
+.legenda {
+    margin-top: 0.8em;
+}
+
+.legenda-titulo {
+    font-weight: 700;
+    font-size: 0.9em;
+    margin-bottom: 0.3em;
+}
+
+.legenda-lista {
+    list-style: none;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4em 1em;
+    font-size: 0.85em;
+}
+
+/* A legenda tem texto (faixa de valores) e não só cor. */
+.legenda-lista li {
+    display: flex;
+    align-items: center;
+    gap: 0.4em;
+}
+
+.legenda-cor {
+    width: 18px;
+    height: 18px;
+    border: 1px solid #777;
+    border-radius: 3px;
+}
+
+.painel-lateral h2 {
+    font-family: Montserrat, Tahoma, sans-serif;
+    color: var(--roxo-marca);
+    margin-bottom: 0.5em;
+}
+
+.painel-lateral dl {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.3em 0.8em;
+    margin-top: 0.8em;
+}
+
+.painel-lateral dt {
+    font-weight: 700;
+}
+
+/* Mobile: mapa em tela cheia e painel como bottom sheet (specs.md 4.7). */
+@media (max-width: 800px) {
+    .header-interno {
+        grid-template-columns: 1fr auto;
+    }
+
+    .header-interno .nav-header-list,
+    .linha-fina {
+        display: none;
+    }
+
+    .layout-mapa {
+        grid-template-columns: 1fr;
+        padding: 0;
+        margin: 0;
+    }
+
+    .area-mapa {
+        border-radius: 0;
+    }
+
+    #mapa {
+        height: 60vh;
+    }
+
+    .painel-lateral {
+        position: sticky;
+        bottom: 0;
+        max-height: 40vh;
+        overflow-y: auto;
+        border-radius: 14px 14px 0 0;
+        box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.2);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .uf {
+        transition: none;
+    }
+}
+
+.municipio {
+    stroke: var(--mapa-borda);
+    stroke-width: 0.4px;
+    stroke-linejoin: round;
+    cursor: pointer;
+}
+
+.municipio:hover,
+.municipio.selecionada {
+    stroke: #111;
+    stroke-width: 1.6px;
+}
+
+/* Seções do painel do município (specs.md 4.3). */
+.secao-painel {
+    margin-top: 1.2em;
+}
+
+.secao-painel h3 {
+    font-size: 1em;
+    color: var(--roxo-marca);
+    margin-bottom: 0.4em;
+}
+
+.secao-painel table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85em;
+}
+
+.secao-painel th,
+.secao-painel td {
+    text-align: left;
+    padding: 0.3em 0.4em;
+    border-bottom: 1px solid #ddd;
+}
+
+.so-leitor {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+}
+
+.painel-lateral {
+    overflow-y: auto;
+}
+
+/* Barra de filtros (specs.md 4.4): no desktop fica no topo do mapa, no mobile vira gaveta. */
+.barra-filtros {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6em 1em;
+    align-items: end;
+    padding: 0.6em 0;
+}
+
+.barra-filtros label {
+    display: flex;
+    flex-direction: column;
+    font-size: 0.85em;
+    font-weight: 700;
+    gap: 0.2em;
+}
+
+.barra-filtros select {
+    font-size: 1rem;
+    font-weight: 400;
+    padding: 0.3em;
+}
+
+.barra-filtros .filtro-renda {
+    flex-direction: row;
+    align-items: center;
+    gap: 0.4em;
+}
+
+.filtros-aviso {
+    flex-basis: 100%;
+    background-color: #fff3cd;
+    border-radius: 6px;
+    color: #5c4400;
+    font-size: 0.85em;
+    padding: 0.2em 0.6em;
+}
+
+.filtros-aviso[hidden] {
+    display: none;
+}
+
+.botao-filtros {
+    display: none;
+    margin-bottom: 0.4em;
+}
+
+@media (max-width: 800px) {
+    .botao-filtros {
+        display: inline-block;
+        margin: 0.5em;
+    }
+
+    .barra-filtros {
+        display: none;
+        padding: 0.6em;
+    }
+
+    .barra-filtros.aberta {
+        display: flex;
+    }
+}
+
+.paginacao {
+    display: flex;
+    align-items: center;
+    gap: 0.6em;
+    margin-top: 0.5em;
+    font-size: 0.85em;
+}
+
+.paginacao button:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+.nota-painel {
+    margin-top: 0.4em;
+    font-size: 0.8em;
+    color: #555;
+}
+
+.filtros-nota {
+    background-color: #eef1f6;
+    color: #444;
+}
+
+/* Busca e favoritos (specs.md 4.5). */
+.barra-busca {
+    display: flex;
+    gap: 0.6em;
+    align-items: flex-start;
+    padding-top: 0.6em;
+}
+
+.busca {
+    position: relative;
+    flex: 1;
+}
+
+.busca input {
+    width: 100%;
+    font-size: 1rem;
+    padding: 0.5em 0.7em;
+    border: 1px solid #888;
+    border-radius: 6px;
+}
+
+#sugestoes,
+#menuFavoritos {
+    position: absolute;
+    z-index: 20;
+    left: 0;
+    right: 0;
+    margin: 2px 0 0;
+    padding: 0;
+    list-style: none;
+    background: white;
+    border: 1px solid #888;
+    border-radius: 6px;
+    max-height: 60vh;
+    overflow-y: auto;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+}
+
+#sugestoes[hidden],
+#menuFavoritos[hidden] {
+    display: none;
+}
+
+#sugestoes li {
+    display: flex;
+    flex-direction: column;
+    padding: 0.45em 0.7em;
+    cursor: pointer;
+}
+
+#sugestoes li small {
+    color: #555;
+}
+
+#sugestoes li[aria-selected="true"],
+#sugestoes li:hover {
+    background: #ece8f5;
+}
+
+.favoritos {
+    position: relative;
+}
+
+#menuFavoritos {
+    left: auto;
+    right: 0;
+    width: max-content;
+    max-width: min(90vw, 360px);
+}
+
+#menuFavoritos li {
+    padding: 0.35em 0.7em;
+}
+
+#menuFavoritos button {
+    background: none;
+    border: 0;
+    cursor: pointer;
+    font-size: 1em;
+    text-align: left;
+    color: var(--roxo-marca);
+    text-decoration: underline;
+}
+
+.botao-favorito {
+    margin-top: 0.8em;
+}
+
+.rolagem-tabela {
+    overflow-x: auto;
+}
+
+.secao-painel td button.item-breadcrumb {
+    text-align: left;
+    padding: 0;
+}
+
+.secao-painel button.item-breadcrumb {
+    background: none;
+    border: 0;
+    color: var(--roxo-marca);
+    cursor: pointer;
+    font: inherit;
+    text-decoration: underline;
+}

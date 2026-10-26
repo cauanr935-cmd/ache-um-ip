@@ -1,5 +1,15 @@
 # Anos das edicoes da OBMEP cujas paginas de premiacao NAO informam o ano
-# (16a, 17a e 18a OBMEP). O ano nao e inferido pelo numero da edicao: preencha so
-# com confirmacao da fonte oficial. Formato:  "<rotulo em premiados.htm>": <ano>
-# Exemplo (NAO confirmado, nao ativo):
-# "16ª OBMEP": 2021
+# (16a, 17a e 18a OBMEP). O ano nao e inferido pelo numero da edicao: so entra aqui
+# com confirmacao em fonte. Formato:  "<rotulo em premiados.htm>": <ano>
+#
+# Ano = ano das provas e da premiacao.
+#
+# 16a OBMEP: 2021. O Regulamento Especial da 16a OBMEP (publicado pela organizacao, ex.: copia do IFMG
+#   Conselheiro Lafaiete, noticias-2021) mantem as inscricoes de fev-mar/2020, mas fixa prazos de setembro de 2021;
+#   a Agencia Brasil (2023-05) cita o coordenador-geral da OBMEP premiando "alunos que ganharam medalha
+#   de ouro em 2021 e 2022" (16a e 17a edicoes). Nao houve premiacao em 2020.
+# 17a OBMEP: 2022. Resultado divulgado em 20/12/2022 (Agencia Brasil, 2022-12).
+# 18a OBMEP: 2023. Resultado divulgado em 20/12/2023; 1a edicao com premiacao estadual (O Povo, 2023-12-20).
+"16ª OBMEP": 2021
+"17ª OBMEP": 2022
+"18ª OBMEP": 2023

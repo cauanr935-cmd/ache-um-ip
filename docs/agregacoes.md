@@ -12,7 +12,7 @@ Chaves padronizadas: `co_municipio` (7 dígitos, str), `co_entidade` (8 dígitos
 | agg_proficiencia_escola | co_entidade, etapa, ano | 498814 | 17 |
 | agg_proficiencia_municipio | co_municipio, etapa, ano, rede | 206273 | 15 |
 | agg_proficiencia_uf | uf, etapa, ano, rede_grupo | 243 | 12 |
-| agg_medalhas_municipio | co_municipio, ano, olimpiada, medalha, etapa, rede_grupo | 64738 | 11 |
+| agg_medalhas_municipio | co_municipio, ano, olimpiada, medalha, etapa, rede_grupo | 97439 | 11 |
 
 Colunas:
 - **agg_enem_municipio**: `visao`, `co_municipio`, `ano`, `rede_grupo`, `recorte`, `n`, `n_inscritos_total`, `n_renda_valida`, `pct_renda_pc_le_1_5_ponto_medio`, `pct_certamente_le_1_5`, `pct_possivelmente_le_1_5`, `pct_acima_1_5`, `mediana_renda_pc_sm`, `n_feminino`, `n_masculino`, `n_tp_escola_valido`, `pct_publica_tp_escola`, `mediana_renda_pc_reais`, `n_cn`, `media_cn`, `n_ch`, `media_ch`, `n_lc`, `media_lc`, `n_mt`, `media_mt`, `n_redacao`, `media_redacao`, `pct_redacao_zero`, `n_nota_zero_invalidada`, `suprimido`
@@ -49,7 +49,7 @@ Notas de desenho:
 - Notas de área (CN, CH, LC, MT) `== 0` ou `> 1000` → nulo (tratadas como prova zerada/eliminada; a escala TRI não gera 0). Contadas em `n_nota_zero_invalidada`.
 - Redação `== 0` é **válida** (redação anulada/em branco) e permanece; reportada em `pct_redacao_zero`. Redação fora de [0, 1000] → nulo.
 - Renda: só entra quem tem faixa A–Q e `q005` entre 1 e 20 (`n_renda_valida`); detalhes em `renda_proxy.md`. Mediana (robusta) em vez de média para o proxy; sem corte de extremos.
-- Município nulo → linha fora das agregações; medalhistas sem município casado ficam de fora (173 de 335281 linhas, nome+UF normalizados: {'exato': 334401, 'fuzzy': 707, 'sem_match': 173}).
+- Município nulo → linha fora das agregações; medalhistas sem município casado ficam de fora (313 de 508066 linhas, nome+UF normalizados: {'exato': 506703, 'fuzzy': 1050, 'sem_match': 313}).
 - **Supressão** (`config/supressao.yaml`, n_min padrão **10**): `n < n_min` → `suprimido=True` e métricas nulas; `n` é mantido. Em `agg_enem_municipio`, médias por área, renda, % escola pública e sexo têm base própria (`n_cn`…, `n_renda_valida`, `n_tp_escola_valido`) e ficam nulas isoladamente quando a sua base < n_min, mesmo que a linha não seja suprimida.
 
 **Contagens antes/depois da supressão:**
@@ -60,7 +60,7 @@ Notas de desenho:
 | agg_proficiencia_escola | 498814 | 126453 | heranca INEP (ND) | 372361 |
 | agg_proficiencia_municipio | 206273 | 21169 | heranca INEP (ND) | 185104 |
 | agg_proficiencia_uf | 243 | 0 | 10 | 243 |
-| agg_medalhas_municipio | 64738 | 57758 | 10 | 6980 |
+| agg_medalhas_municipio | 97439 | 86746 | 10 | 10693 |
 
 Por visão (agg_enem_municipio):
 
@@ -75,7 +75,7 @@ Medalhas (células com n ≥ 10 expõem `n_publicavel`):
 | olimpiada | linhas | medalhas | celulas_publicaveis |
 |---|---|---|---|
 | OBI | 2021 | 5481 | 96 |
-| OBMEP | 62717 | 329627 | 6884 |
+| OBMEP | 95418 | 502272 | 10597 |
 
 **Nulos por coluna (as 6 mais nulas por tabela; completo em `data/interim/*.parquet`):**
 - **agg_enem_municipio**: `pct_publica_tp_escola` 97%, `n_inscritos_total` 91%, `n_renda_valida` 91%, `pct_renda_pc_le_1_5_ponto_medio` 91%, `pct_certamente_le_1_5` 91%, `pct_possivelmente_le_1_5` 91%

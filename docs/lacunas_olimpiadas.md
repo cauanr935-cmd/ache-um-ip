@@ -10,7 +10,7 @@ User-Agent identificado, 3 tentativas). Onde exigiria login/interação, **não 
 
 ## OBI (T1.9) — coletada: 2016, 2017, 2019, 2020, 2021, 2022, 2023, 2024, 2025
 Fonte: `https://olimpiada.ic.unicamp.br/passadas/` → página de cada edição → "Quadro de Medalhas" por modalidade/nível (tabela HTML: medalha, classificação, nota, nome, escola, cidade, UF). Sem login, sem captcha; `robots.txt` inexistente (devolve página de erro).
-- OBI 2018: edição: falha ao baixar https://olimpiada.ic.unicamp.br/passadas/OBI2018/: 404 Client Error: Not Found for url: https://olimpiada.ic.unicamp.br/passadas/OBI2018/
+- OBI 2018: edição: modo offline e sem cache: https://olimpiada.ic.unicamp.br/passadas/OBI2018/
 - **2018:** o link da edição consta no índice, mas a página responde 404 (verificado em 02/10/2026). Sem outra fonte identificada; pendente.
 - Sem `rede` e sem código INEP; `posicao` vem preenchida (empates repetem o número).
 - "HM" (Honra ao Mérito) foi mapeado para `Menção Honrosa` para unificar com a OBMEP; **2025 não traz linhas de HM** no quadro publicado.

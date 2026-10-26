@@ -18,6 +18,9 @@ from bs4 import BeautifulSoup
 from caminhos import RAIZ  # noqa: E402  (ACHE_RAIZ configura a raiz)
 RAW = RAIZ / "data/raw/olimpiadas/obmep/html"
 SAIDA = RAIZ / "data/interim/obmep_premiados.parquet"
+# Premiacao estadual/regional (18a OBMEP em diante): arquivo separado, porque a medalha estadual
+# nao equivale a nacional e nao deve entrar na contagem de medalhistas nacionais.
+SAIDA_ESTADUAL = RAIZ / "data/interim/obmep_premiados_estadual.parquet"
 DOC_COBERTURA = RAIZ / "docs/cobertura_obmep.md"
 DOC_LACUNAS = RAIZ / "docs/lacunas.md"
 # Opcional: {rotulo da edicao no indice: ano} para edicoes cujas paginas nao informam o ano.
@@ -67,6 +70,9 @@ def sopa(html: str) -> BeautifulSoup:
 RE_MEDALHA = re.compile(r"verRelatorioPremiados(Ouro|Prata|Bronze)(\.privada)?\.do\.htm$")
 RE_MENCAO = re.compile(r"verRelatorioPremiadosMencao-([A-Z]{2})\.(\d)(\.privada)?\.do\.htm$")
 RE_COMBO = re.compile(r"function comboUF\(goto\)\{var url='([^']*)'\+goto\.value\+'([^']*)'")
+# 18a e 19a OBMEP chamam o menu de "Regional"; a 20a, de "Estadual".
+RE_COMBO_ESTADUAL = re.compile(r"function comboUF(?:Regional|Estadual)\(goto\)\{var url='([^']*)'\+goto\.value\+'([^']*)'")
+RE_ESTADUAL = re.compile(r"verRelatorioPremiados(?:Regional|Estadual)PorNivel-([A-Z]{2})\.(\d)(\.privada)?\.do\.htm$")
 RE_ANO = re.compile(r"\b(20[0-2]\d)\b")
 
 
@@ -98,14 +104,17 @@ def listas_do_mapa(html_mapa: str, url_mapa: str) -> dict:
         if m:
             rede = "privada" if m.group(2) else "publica"
             medalhas.append((m.group(1), rede, urljoin(url_mapa, a["href"])))
-    menu = None
+    menu = menu_estadual = None
     mc = RE_COMBO.search(html_mapa)
+    me = RE_COMBO_ESTADUAL.search(html_mapa)
     for sel in s.find_all("select"):
-        if mc and sel.get("onchange", "").strip() == "comboUF(this);":
-            ufs = [o["value"] for o in sel.find_all("option") if o.get("value")]
+        acao = sel.get("onchange", "").strip()
+        ufs = [o["value"] for o in sel.find_all("option") if o.get("value")]
+        if mc and acao == "comboUF(this);" and menu is None:
             menu = (urljoin(url_mapa, mc.group(1)), mc.group(2), ufs)
-            break
-    return {"medalhas": medalhas, "menu": menu}
+        elif me and re.fullmatch(r"comboUF(Regional|Estadual)\(this\);", acao) and menu_estadual is None:
+            menu_estadual = (urljoin(url_mapa, me.group(1)), me.group(2), ufs)
+    return {"medalhas": medalhas, "menu": menu, "menu_estadual": menu_estadual}
 
 
 def ano_da_pagina(html: str) -> int | None:
@@ -157,7 +166,7 @@ def coletar(log: list[dict]) -> dict[int, list[dict]]:
         arquivos = []
         pasta = RAW / str(ano)
 
-        def pegar(url, medalha, rede, uf=None, nivel_mh=None):
+        def pegar(url, medalha, rede, uf=None, nivel_mh=None, escopo="nacional"):
             try:
                 if url == primeira:
                     destino = pasta / nome_arquivo(url)
@@ -165,7 +174,7 @@ def coletar(log: list[dict]) -> dict[int, list[dict]]:
                         destino.parent.mkdir(parents=True, exist_ok=True)
                         tmp.replace(destino)
                 baixar(url, pasta / nome_arquivo(url))
-                arquivos.append({"medalha": medalha, "rede_pagina": rede, "uf_menu": uf,
+                arquivos.append({"medalha": medalha, "rede_pagina": rede, "uf_menu": uf, "escopo": escopo,
                                  "nivel_mh": nivel_mh, "arquivo": pasta / nome_arquivo(url)})
             except Exception as e:  # noqa: BLE001
                 log.append({"ano": ano, "edicao": rotulo, "msg": f"{url}: {e}"})
@@ -188,17 +197,34 @@ def coletar(log: list[dict]) -> dict[int, list[dict]]:
                               "privada" if m.group(3) else "publica", m.group(1), int(m.group(2)))
         else:
             log.append({"ano": ano, "edicao": rotulo, "msg": "mapa sem menu de Menção Honrosa"})
+        if info["menu_estadual"]:
+            prefixo, sufixo, ufs = info["menu_estadual"]
+            for uf in ufs:
+                url_menu = f"{prefixo}{uf}{sufixo}"
+                try:
+                    html_menu = baixar(url_menu, pasta / nome_arquivo(url_menu))
+                except Exception as e:  # noqa: BLE001
+                    log.append({"ano": ano, "edicao": rotulo, "msg": f"menu estadual {uf}: {e}"})
+                    continue
+                for a in sopa(html_menu).find_all("a", href=True):
+                    m = RE_ESTADUAL.search(a["href"])
+                    if m:
+                        pegar(urljoin(url_menu, a["href"]), None, "privada" if m.group(3) else "publica",
+                              m.group(1), int(m.group(2)), escopo="estadual")
         edicoes[ano] = arquivos
         print(f"{ano}: {len(arquivos)} listas", flush=True)
     for ano in ANOS:
         if ano not in edicoes:
-            log.append({"ano": ano, "edicao": "-", "msg": "sem dados: nenhuma edição com este ano identificado em premiados.htm (as 16ª–18ª OBMEP existem mas suas páginas não informam o ano)"})
+            motivo = ("a 16ª OBMEP (inscrições em 2020) foi adiada e realizada em 2021; não houve premiação em 2020"
+                      if ano == 2020 else "nenhuma edição com este ano identificado em premiados.htm")
+            log.append({"ano": ano, "edicao": "-", "msg": f"sem dados: {motivo}"})
     return edicoes
 
 
 # ------------------------------------------------------------------- parsing
 COLUNAS = {"nome": "nome", "escola": "escola_nome", "tipo": "rede",
-           "município": "municipio_nome", "uf": "uf", "medalha": "medalha", "menção": "medalha"}
+           "município": "municipio_nome", "uf": "uf", "medalha": "medalha", "menção": "medalha",
+           "medalha regional": "medalha", "medalha estadual": "medalha"}
 SAIDA_COLS = ["olimpiada", "ano", "nivel", "medalha", "nome", "escola_nome", "rede",
               "municipio_nome", "uf", "posicao"]
 
@@ -207,8 +233,11 @@ def _txt(el) -> str:
     return re.sub(r"\s+", " ", el.get_text(" ", strip=True)).strip()
 
 
-def parsear_lista(arquivo: Path, ano: int, medalha: str) -> list[dict]:
-    """Extrai as linhas de uma pagina de lista (uma tabela por nivel). Levanta erro se a estrutura diferir."""
+def parsear_lista(arquivo: Path, ano: int, medalha: str | None) -> list[dict]:
+    """Extrai as linhas de uma pagina de lista (uma tabela por nivel). Levanta erro se a estrutura diferir.
+
+    medalha=None: usa a coluna de medalha da propria pagina (listas estaduais trazem Ouro/Prata/Bronze juntas).
+    """
     s = sopa(arquivo.read_bytes().decode("utf-8", errors="replace"))
     linhas = []
     for tabela in s.find_all("table"):
@@ -231,7 +260,7 @@ def parsear_lista(arquivo: Path, ano: int, medalha: str) -> list[dict]:
                 continue
             linhas.append({
                 "olimpiada": "OBMEP", "ano": ano, "nivel": nivel,
-                "medalha": medalha, "nome": d["nome"], "escola_nome": d["escola_nome"],
+                "medalha": medalha or d["medalha"], "nome": d["nome"], "escola_nome": d["escola_nome"],
                 "rede": d["rede"] if d["rede"] not in ("", "---") else None, "municipio_nome": d["municipio_nome"],
                 "uf": d["uf"], "posicao": int(pos) if pos.isdigit() else None,
             })
@@ -248,7 +277,7 @@ def _md_tabela(df: pd.DataFrame) -> str:
     return "\n".join([cab, sep, *corpo])
 
 
-def escrever_cobertura(df: pd.DataFrame, log: list[dict]) -> None:
+def escrever_cobertura(df: pd.DataFrame, log: list[dict], estadual: pd.DataFrame | None = None) -> None:
     ordem = ["Ouro", "Prata", "Bronze", "Menção Honrosa"]
     partes = ["# Cobertura OBMEP (T1.8)\n",
               f"Fonte: {URL_INDICE} (páginas-mapa por edição). Período: {ANOS[0]}–{ANOS[-1]} (RN 6).",
@@ -273,6 +302,13 @@ def escrever_cobertura(df: pd.DataFrame, log: list[dict]) -> None:
                           "`rede` segue o publicado: F federal, E estadual, M municipal, C (outros, como publicado), P privada.\n")
         dup = int(df.duplicated(["ano", "nivel", "medalha", "nome", "escola_nome", "municipio_nome", "uf"]).sum())
         partes.append(f"Linhas duplicadas (mesmo ano/nível/medalha/nome/escola/município/UF): {dup}.\n")
+    if estadual is not None and len(estadual):
+        por_ano = (estadual.pivot_table(index="ano", columns="medalha", values="nome", aggfunc="count", fill_value=0)
+                   .reindex(columns=ordem[:3], fill_value=0))
+        por_ano["Total"] = por_ano.sum(axis=1)
+        partes += ["## Premiação estadual (arquivo separado: `data/interim/obmep_premiados_estadual.parquet`)\n",
+                   "Medalha estadual não equivale à nacional; não entra na tabela acima. Edições com premiação estadual: "
+                   "18ª OBMEP (2023) em diante.\n", _md_tabela(por_ano.reset_index()), ""]
     anos_ok = set(df["ano"]) if len(df) else set()
     falhos = [a for a in ANOS if a not in anos_ok]
     partes += ["## Anos sem dados\n", ", ".join(map(str, falhos)) if falhos else "Nenhum.", "",
@@ -288,8 +324,10 @@ def escrever_lacunas(log: list[dict]) -> None:
     atual = atual.split(marca)[0].rstrip() + "\n\n" if marca in atual else atual.rstrip() + "\n\n"
     linhas = [marca, "",
               "- Páginas OBMEP não trazem código INEP da escola; linkage fica para a T2.3.",
-              "- A premiação *estadual* (segundo menu das edições recentes) não foi coletada: "
-              "o escopo é Ouro/Prata/Bronze/Menção Honrosa nacionais."]
+              "- A premiação estadual (2023 em diante) é coletada em arquivo separado "
+              "(`obmep_premiados_estadual.parquet`), sem Menção Honrosa; as edições 2016-2022 não tiveram premiação estadual.",
+              "- Anos das edições 16ª-18ª confirmados em fonte (config/obmep_anos.yaml): 16ª = 2021, 17ª = 2022, 18ª = 2023. "
+              "Não houve premiação em 2020."]
     linhas += [f"- {l['ano'] or l['edicao']}: {l['msg']}" for l in log]
     DOC_LACUNAS.parent.mkdir(parents=True, exist_ok=True)
     DOC_LACUNAS.write_text(atual + "\n".join(linhas) + "\n", encoding="utf-8")
@@ -298,20 +336,30 @@ def escrever_lacunas(log: list[dict]) -> None:
 def main() -> None:
     log: list[dict] = []
     edicoes = coletar(log)
-    linhas = []
+    linhas, linhas_estadual = [], []
     for ano, arquivos in sorted(edicoes.items()):
         for a in arquivos:
             try:
-                linhas += parsear_lista(a["arquivo"], ano, a["medalha"])
+                extraidas = parsear_lista(a["arquivo"], ano, a["medalha"])
             except Exception as e:  # noqa: BLE001
                 log.append({"ano": ano, "edicao": "-", "msg": f"parsing {a['arquivo'].name}: {e}"})
+                continue
+            if a["escopo"] == "estadual":
+                linhas_estadual += [{**r, "uf_premiacao": a["uf_menu"], "grupo": a["rede_pagina"]} for r in extraidas]
+            else:
+                linhas += extraidas
     df = pd.DataFrame(linhas, columns=SAIDA_COLS)
     df = df.astype({"ano": "int16", "nivel": "int8", "posicao": "Int16"})
     SAIDA.parent.mkdir(parents=True, exist_ok=True)
     df.to_parquet(SAIDA, index=False)
-    escrever_cobertura(df, log)
+    # grupo: "publica" = escolas publicas nao seletivas; "privada" = seletivas + privadas (como o site separa).
+    est = pd.DataFrame(linhas_estadual, columns=SAIDA_COLS + ["uf_premiacao", "grupo"])
+    est = est.astype({"ano": "int16", "nivel": "int8", "posicao": "Int16"})
+    est.to_parquet(SAIDA_ESTADUAL, index=False)
+    escrever_cobertura(df, log, est)
     escrever_lacunas(log)
     print(f"{len(df)} linhas -> {SAIDA}")
+    print(f"{len(est)} linhas estaduais -> {SAIDA_ESTADUAL}")
 
 
 if __name__ == "__main__":

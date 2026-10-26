@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mapa - Ache um IP</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/mapa.css">
+
+    <script defer src="../js/vendor/d3.min.js"></script>
+    <script defer src="../js/vendor/topojson-client.min.js"></script>
+    <script defer src="../js/mapa-dados.js"></script>
+    <script defer src="../js/mapa-filtros.js"></script>
+    <script defer src="../js/mapa-busca.js"></script>
+    <script defer src="../js/mapa.js"></script>
+
+    <noscript>Esse site requer JavaScript para funcionar.</noscript>
+</head>
+<body class="pagina-mapa">
+
+    <header class="header-site">
+        <div class="header-interno">
+            <a href="./mapa.html" class="logo">
+                <div class="logo-titulo">Ache um IP</div>
+                <div class="linha-fina">Projeto Universitário 2026 - Grupo 5</div>
+            </a>
+
+            <nav class="nav-header-list">
+                <a href="./mapa.html">Mapa</a>
+                <a href="">Sobre o Projeto</a>
+            </nav>
+
+            <div class="perfil-header">
+                <div id="usuarioNomeHeader" class="perfil-nome"></div>
+                <img id="usuarioFotoPerfilHeader" src="../assets/placeholder_usuario.png" alt="Foto de perfil" class="foto-perfil">
+                <button type="button" id="btnSair" class="botao-secundario">Sair</button>
+            </div>
+        </div>
+    </header>
+
+    <main class="layout-mapa">
+
+        <section class="area-mapa" aria-label="Mapa do Brasil">
+            <div class="barra-busca">
+                <div class="busca" role="search">
+                    <label for="busca" class="so-leitor">Buscar município, escola ou UF</label>
+                    <input id="busca" type="search" role="combobox" aria-expanded="false" aria-controls="sugestoes" aria-autocomplete="list"
+                           autocomplete="off" maxlength="80" placeholder="Buscar município, escola ou UF">
+                    <ul id="sugestoes" role="listbox" aria-label="Resultados da busca" hidden></ul>
+                    <div id="buscaStatus" class="so-leitor" role="status" aria-live="polite"></div>
+                </div>
+                <div class="favoritos">
+                    <button type="button" id="btnFavoritos" class="botao-secundario" aria-expanded="false" aria-controls="menuFavoritos">★ Favoritos</button>
+                    <ul id="menuFavoritos" aria-label="Favoritos" hidden></ul>
+                </div>
+            </div>
+
+            <button type="button" id="btnFiltros" class="botao-secundario botao-filtros" aria-expanded="false" aria-controls="filtros">Filtros</button>
+            <form id="filtros" class="barra-filtros" aria-label="Filtros do mapa" onsubmit="return false">
+                <label>Prova
+                    <select id="fProva"></select>
+                </label>
+                <label>Etapa
+                    <select id="fEtapa">
+                        <option value="ef2">Ensino Fundamental 2</option>
+                        <option value="em">Ensino Médio</option>
+                    </select>
+                </label>
+                <label>Sexo
+                    <select id="fSexo">
+                        <option value="todos">Todos</option>
+                        <option value="f">Feminino</option>
+                        <option value="m">Masculino</option>
+                    </select>
+                </label>
+                <label>Ano
+                    <select id="fAno"></select>
+                </label>
+                <label>Rede
+                    <select id="fRede"></select>
+                </label>
+                <label class="filtro-renda">
+                    <input type="checkbox" id="fRenda">
+                    Renda per capita ≤ 1,5 SM (estimado)
+                </label>
+                <p id="filtrosNota" class="filtros-aviso filtros-nota"></p>
+                <p id="filtrosAviso" class="filtros-aviso" role="status"></p>
+            </form>
+
+            <div class="barra-mapa">
+                <nav class="breadcrumb" aria-label="Navegação do mapa">
+                    <button type="button" id="btnVoltar" class="botao-secundario" hidden>← Voltar</button>
+                    <ol id="breadcrumb"></ol>
+                </nav>
+            </div>
+
+            <div class="moldura-mapa">
+                <svg id="mapa" role="group" aria-labelledby="mapaTitulo mapaDescricao" tabindex="0">
+                    <title id="mapaTitulo">Mapa do Brasil por unidade da federação</title>
+                    <desc id="mapaDescricao">
+                        Mapa de calor por estado. Use Tab para navegar entre os estados e Enter para aproximar.
+                    </desc>
+                </svg>
+
+                <div class="controles-zoom" role="group" aria-label="Controles de zoom">
+                    <button type="button" id="zoomMais" aria-label="Aproximar">+</button>
+                    <button type="button" id="zoomMenos" aria-label="Afastar">−</button>
+                    <button type="button" id="zoomReset" aria-label="Voltar para o Brasil inteiro">⌂</button>
+                </div>
+
+                <div id="tooltip" class="tooltip-mapa" role="status" hidden></div>
+            </div>
+
+            <div class="legenda" id="legenda" aria-label="Legenda do mapa de calor"></div>
+        </section>
+
+        <aside class="painel-lateral" id="painel" aria-label="Detalhes">
+            <h2 id="painelTitulo">Brasil</h2>
+            <p id="painelTexto">Clique em um estado para aproximar o mapa.</p>
+        </aside>
+
+    </main>
+
+</body>
+</html>

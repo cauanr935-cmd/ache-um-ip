@@ -1,0 +1,27 @@
+{
+  "name": "ache-um-ip",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Site interno do Instituto Ponte: mapa de potencial de alunos talentosos.",
+  "scripts": {
+    "dev": "node --watch server/index.js",
+    "start": "node server/index.js",
+    "malha": "node --max-old-space-size=8192 scripts/build_malha.js",
+    "test": "node --test server/app.test.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "compression": "^1.8.2",
+    "cookie-session": "^2.1.1",
+    "express": "^4.22.3",
+    "google-auth-library": "^11.3.1"
+  },
+  "devDependencies": {
+    "shapefile": "^0.6.6",
+    "topojson-client": "^3.1.0",
+    "topojson-server": "^3.0.1",
+    "topojson-simplify": "^3.0.3"
+  }
+}
