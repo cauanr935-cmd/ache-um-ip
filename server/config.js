@@ -31,6 +31,12 @@ const config = {
   // Dados privados (fora do git): medalhistas com nome, favoritos e log de auditoria.
   raizPrivado: path.resolve(__dirname, "../data/privado"),
   // Com false (padrão) a lista de medalhistas mostra só o pseudônimo; true libera o nome completo (specs.md 7).
+  // Vercel: disco somente leitura (sem auditoria nem dados privados).
+  somenteLeitura: Boolean(process.env.VERCEL),
+  redis: {
+    url: process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL,
+    token: process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN,
+  },
   alunoIdentificado: process.env.ALUNO_IDENTIFICADO === "true",
 };
 

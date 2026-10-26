@@ -1,0 +1,9 @@
+requirements.txt
+.venv
+notebooks
+src
+data/raw
+data/interim
+data/privado
+documentos
+docs

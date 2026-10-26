@@ -7,4 +7,10 @@ if (!config.googleClientId) {
 }
 
 const app = criarApp({ config, verificarToken: criarVerificadorGoogle(config) });
-app.listen(config.porta, () => console.log(`Ache um IP em http://localhost:${config.porta}`));
+
+// Na Vercel o app é exportado como função; localmente sobe o servidor.
+if (require.main === module) {
+  app.listen(config.porta, () => console.log(`Ache um IP em http://localhost:${config.porta}`));
+}
+
+module.exports = app;

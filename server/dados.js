@@ -15,7 +15,7 @@ function criarDados(config) {
   const paineis = new Map(); // UF -> painéis dos municípios (cada arquivo tem ~1 MB)
   const fichas = new Map();  // UF -> fichas das escolas
   let indice = null;
-  const favoritos = criarFavoritos(path.join(config.raizPrivado, "favoritos.json"));
+  const favoritos = criarFavoritos(path.join(config.raizPrivado, "favoritos.json"), config.redis);
   const arquivoAuditoria = path.join(config.raizPrivado, "auditoria.jsonl");
 
   function carregarBase() {
@@ -97,12 +97,12 @@ function criarDados(config) {
 
   function registrar(app, { exigirLogin, exigirMesmaOrigem }) {
     // Falta de arquivo pré-computado é erro de operação, não do usuário.
-    const protegido = (fn) => (req, res) => {
+    const protegido = (fn) => async (req, res, next) => {
       try {
-        fn(req, res);
+        await fn(req, res);
       } catch (err) {
         if (err.code === "ENOENT") return res.status(503).json({ erro: "dados_nao_gerados" });
-        throw err;
+        next(err);
       }
     };
 
@@ -142,6 +142,8 @@ function criarDados(config) {
 
     // Lista de medalhistas: dado pessoal. Cada abertura gera registro de auditoria; o nome só sai com o flag ligado.
     app.get("/api/municipio/:ibge/medalhistas", exigirLogin, protegido((req, res) => {
+      // Sem disco gravável não há como auditar nem guardar dado pessoal: a lista fica indisponível.
+      if (config.somenteLeitura) return res.status(503).json({ erro: "indisponivel_neste_ambiente" });
       const ibge = req.params.ibge;
       if (!/^\d{7}$/.test(ibge)) return res.status(400).json({ erro: "codigo_invalido" });
       carregarBase();
@@ -164,21 +166,21 @@ function criarDados(config) {
     }));
 
     // ---- Favoritos (por usuário) ----
-    app.get("/api/favoritos", exigirLogin, protegido((req, res) => {
-      res.set("Cache-Control", "no-store").json(favoritos.listar(req.session.email));
+    app.get("/api/favoritos", exigirLogin, protegido(async (req, res) => {
+      res.set("Cache-Control", "no-store").json(await favoritos.listar(req.session.email));
     }));
 
-    app.post("/api/favoritos", exigirLogin, exigirMesmaOrigem, protegido((req, res) => {
+    app.post("/api/favoritos", exigirLogin, exigirMesmaOrigem, protegido(async (req, res) => {
       const { tipo, id } = req.body || {};
       const item = typeof tipo === "string" && typeof id === "string" ? descreverItem(tipo, id) : null;
       if (!item) return res.status(400).json({ erro: "favorito_invalido" });
-      if (!favoritos.adicionar(req.session.email, item)) return res.status(409).json({ erro: "limite_de_favoritos" });
-      res.status(201).json(favoritos.listar(req.session.email));
+      if (!(await favoritos.adicionar(req.session.email, item))) return res.status(409).json({ erro: "limite_de_favoritos" });
+      res.status(201).json(await favoritos.listar(req.session.email));
     }));
 
-    app.delete("/api/favoritos/:tipo/:id", exigirLogin, exigirMesmaOrigem, protegido((req, res) => {
-      favoritos.remover(req.session.email, req.params.tipo, req.params.id);
-      res.json(favoritos.listar(req.session.email));
+    app.delete("/api/favoritos/:tipo/:id", exigirLogin, exigirMesmaOrigem, protegido(async (req, res) => {
+      await favoritos.remover(req.session.email, req.params.tipo, req.params.id);
+      res.json(await favoritos.listar(req.session.email));
     }));
   }
 

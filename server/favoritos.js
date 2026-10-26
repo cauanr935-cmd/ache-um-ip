@@ -5,7 +5,34 @@ const path = require("node:path");
 
 const LIMITE_POR_USUARIO = 200;
 
-function criarFavoritos(arquivo) {
+// Backend alternativo para ambientes sem disco gravável (Vercel): Redis via API REST (Upstash / Vercel KV).
+function criarFavoritosRedis({ url, token }) {
+  async function cmd(...args) {
+    const r = await fetch(url, { method: "POST", headers: { Authorization: "Bearer " + token }, body: JSON.stringify(args) });
+    if (!r.ok) throw new Error("Redis HTTP " + r.status);
+    return (await r.json()).result;
+  }
+  const chave = (email) => "favoritos:" + String(email).toLowerCase();
+  const ler = async (email) => JSON.parse((await cmd("GET", chave(email))) || "[]");
+  return {
+    listar: ler,
+    async adicionar(email, item) {
+      const lista = await ler(email);
+      if (lista.some((f) => f.tipo === item.tipo && f.id === item.id)) return true;
+      if (lista.length >= LIMITE_POR_USUARIO) return false;
+      await cmd("SET", chave(email), JSON.stringify([...lista, item]));
+      return true;
+    },
+    async remover(email, tipo, id) {
+      const lista = await ler(email);
+      await cmd("SET", chave(email), JSON.stringify(lista.filter((f) => !(f.tipo === tipo && f.id === id))));
+    },
+  };
+}
+
+function criarFavoritos(arquivo, redis) {
+  if (redis && redis.url && redis.token) return criarFavoritosRedis(redis);
+
   function ler() {
     try {
       return JSON.parse(fs.readFileSync(arquivo, "utf8"));
@@ -25,11 +52,11 @@ function criarFavoritos(arquivo) {
   const chave = (email) => String(email).toLowerCase();
 
   return {
-    listar(email) {
+    async listar(email) {
       return ler()[chave(email)] || [];
     },
     // Devolve false quando o usuário já está no limite.
-    adicionar(email, item) {
+    async adicionar(email, item) {
       const dados = ler();
       const lista = dados[chave(email)] || [];
       if (lista.some((f) => f.tipo === item.tipo && f.id === item.id)) return true;
@@ -38,7 +65,7 @@ function criarFavoritos(arquivo) {
       gravar(dados);
       return true;
     },
-    remover(email, tipo, id) {
+    async remover(email, tipo, id) {
       const dados = ler();
       const lista = dados[chave(email)] || [];
       dados[chave(email)] = lista.filter((f) => !(f.tipo === tipo && f.id === id));

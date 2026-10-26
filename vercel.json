@@ -1,0 +1,6 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "installCommand": "npm install --omit=dev",
+  "functions": { "index.js": { "includeFiles": "{screens,config,data/malha,data/api}/**" } }
+}

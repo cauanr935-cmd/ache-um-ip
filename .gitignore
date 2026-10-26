@@ -9,5 +9,4 @@ config/lgpd.yaml
 *.claude
 node_modules/
 
-data/api/
 data/privado/
