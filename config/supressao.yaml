@@ -2,6 +2,9 @@
 # Onde n < n_min as metricas viram nulo e suprimido=True; n e mantido (uso interno).
 # Atencao: quando a propria contagem e a metrica (agg_medalhas_municipio), use a coluna n_publicavel para exposicao.
 n_min_padrao: 10
+# Olimpíadas (OBMEP/OBI): o n é a própria contagem de medalhas (já públicas), não o tamanho de uma amostra.
+# Decisão do grupo: mostrar a partir de 1 medalha. Só n = 0 fica sem dado.
+n_min_olimpiadas: 1
 n_min_por_tabela:
   agg_enem_municipio: 10
   agg_medalhas_municipio: 10

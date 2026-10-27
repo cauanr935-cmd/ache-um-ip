@@ -27,7 +27,9 @@ from lgpd import carregar_sal, sha256
 INTERIM = RAIZ / "data/interim"
 SAIDA = RAIZ / "data/api"
 PRIVADO = RAIZ / "data/privado/medalhistas"
-N_MIN = yaml.safe_load((RAIZ / "config/supressao.yaml").read_text(encoding="utf-8"))["n_min_padrao"]
+_SUPRESSAO = yaml.safe_load((RAIZ / "config/supressao.yaml").read_text(encoding="utf-8"))
+N_MIN = _SUPRESSAO["n_min_padrao"]
+N_MIN_OLIMPIADAS = _SUPRESSAO["n_min_olimpiadas"]  # contagem de medalhas é a própria métrica; ver supressao.yaml
 ANO_MIN_OLIMPIADA, ANO_MAX_OLIMPIADA = 2016, 2025  # janela de 10 anos (RN 6)
 PERCENTIL_DESTAQUE = 0.9  # escola destaque provisoria: top 10% da UF na etapa (specs.md 4.6, [ABERTO])
 MEDALHAS_VALIDAS = ["Ouro", "Prata", "Bronze"]  # menção honrosa não conta como medalha
@@ -41,12 +43,12 @@ def num(x, casas=2):
     return None if x is None or pd.isna(x) else round(float(x), casas)
 
 
-def registros(df, valor, n, casas=2):
-    """[{codigo, valor, n, suprimido}]. Sem valor ou com n < N_MIN vira suprimido, valor nulo."""
+def registros(df, valor, n, casas=2, n_min=N_MIN):
+    """[{codigo, valor, n, suprimido}]. Sem valor ou com n < n_min vira suprimido, valor nulo."""
     saida = []
     for codigo, v, k in zip(df["codigo"], df[valor], df[n]):
         k = None if pd.isna(k) else int(k)
-        sup = pd.isna(v) or (k is not None and k < N_MIN)
+        sup = pd.isna(v) or (k is not None and k < n_min)
         saida.append({"codigo": str(codigo), "valor": None if sup else num(v, casas), "n": k, "suprimido": bool(sup)})
     return saida
 
@@ -84,13 +86,13 @@ catalogo = {"n_min": N_MIN, "provas": {}, "sexo": {"valores": ["todos"], "motivo
             "renda": {"disponivel": False, "motivo": MOTIVO_RENDA}}
 
 
-def emitir(prova, etapa, ano, rede, uf_df, mun_df):
+def emitir(prova, etapa, ano, rede, uf_df, mun_df, n_min=N_MIN):
     """Grava o nivel UF e um arquivo por UF (municipios). Os dois ja com colunas codigo, valor, n."""
     pasta = SAIDA / "mapa" / f"{prova}_{etapa}_{ano}_{rede}"
-    gravar(pasta / "uf.json", registros(uf_df, "valor", "n"))
+    gravar(pasta / "uf.json", registros(uf_df, "valor", "n", n_min=n_min))
     mun_df = mun_df.assign(uf=mun_df["codigo"].map(UF_DE))
     for uf, parte in mun_df.groupby("uf"):
-        gravar(pasta / f"{uf}.json", registros(parte, "valor", "n"))
+        gravar(pasta / f"{uf}.json", registros(parte, "valor", "n", n_min=n_min))
 
 
 # ---------- Saeb (Ideb por municipio, microdados Saeb por UF) ----------
@@ -154,7 +156,7 @@ for chave, (olimp, redes) in nomes_olimpiada.items():
                 u = m.assign(uf=m["codigo"].map(UF_DE), pop=m["codigo"].map(POP)).groupby("uf").agg(n=("n", "sum"), pop=("pop", "sum")).reset_index()
                 u["valor"] = u["n"] / u["pop"] * 100000
                 u["codigo"] = u["uf"].map(cod_uf)
-                emitir(chave.lower(), etapa, ano, rede, u[["codigo", "valor", "n"]], m[["codigo", "valor", "n"]])
+                emitir(chave.lower(), etapa, ano, rede, u[["codigo", "valor", "n"]], m[["codigo", "valor", "n"]], n_min=N_MIN_OLIMPIADAS)
 
 gravar(SAIDA / "recortes.json", catalogo)
 
@@ -207,7 +209,7 @@ for uf in UFS:
             d["contexto"]["renda"] = {"ano": ano_enem, "pct_ate_1_5_sm": num(r["pct_renda_pc_le_1_5_ponto_medio"], 1)}  # estimado
         if co in med_tot.index.get_level_values(0):
             for (olimp, medalha), n in med_tot.loc[co].items():
-                if n >= N_MIN:  # supressão sobre o total do município na janela de 10 anos
+                if n >= N_MIN_OLIMPIADAS:
                     d["medalhas"].append({"olimpiada": olimp, "medalha": medalha, "n": int(n)})
     gravar(SAIDA / "municipio" / f"{uf}.json", painel)
 

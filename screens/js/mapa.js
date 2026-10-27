@@ -598,7 +598,7 @@ function desenharSecoesMunicipio(painel, p) {
             ["Olimpíada", "Medalha", "Total"],
             p.medalhas.map(function (m) { return [m.olimpiada, m.medalha, formatoInteiro.format(m.n)]; }));
     } else {
-        medalhas.append("p").text("Menos de 10 medalhas no período: dados insuficientes.");
+        medalhas.append("p").text("Nenhuma medalha no período.");
     }
     desenharListaMedalhistas(medalhas, p.codigo);
 
