@@ -53,7 +53,7 @@ async function iniciarGoogle() {
     });
 
     google.accounts.id.renderButton(
-        document.getElementById("g_id_onload"),
+        document.getElementById("botao-google"),
         {
             type: "standard",
             shape: "pill",
