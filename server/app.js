@@ -10,6 +10,7 @@ const PUBLICOS = new Set([
   "/css/style.css",
   "/js/login.js",
   "/assets/placeholder_usuario.png",
+  "/assets/logo-instituto-ponte.png",
 ]);
 
 const { UFS } = require("./ufs");
