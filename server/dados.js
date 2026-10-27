@@ -5,6 +5,7 @@ const path = require("node:path");
 const { UFS } = require("./ufs");
 const { criarIndice, buscar } = require("./busca");
 const { criarFavoritos } = require("./favoritos");
+const { criarRedis, redisConfigurado } = require("./redis");
 
 function criarDados(config) {
   const raiz = config.raizApi;
@@ -17,6 +18,8 @@ function criarDados(config) {
   let indice = null;
   const favoritos = criarFavoritos(path.join(config.raizPrivado, "favoritos.json"), config.redis);
   const arquivoAuditoria = path.join(config.raizPrivado, "auditoria.jsonl");
+  // Na Vercel (disco somente leitura) os medalhistas e a auditoria ficam no Redis privado, nunca no git.
+  const redis = redisConfigurado(config.redis) ? criarRedis(config.redis) : null;
 
   function carregarBase() {
     if (!catalogo) {
@@ -45,9 +48,21 @@ function criarDados(config) {
   }
 
   // Registro de auditoria: sem conseguir gravar, a lista de medalhistas não é entregue (specs.md 7).
-  function auditar(registro) {
+  async function auditar(registro) {
+    const linha = JSON.stringify({ quando: new Date().toISOString(), ...registro });
+    if (redis) return redis.cmd("RPUSH", "auditoria:medalhistas", linha);
     fs.mkdirSync(path.dirname(arquivoAuditoria), { recursive: true });
-    fs.appendFileSync(arquivoAuditoria, JSON.stringify({ quando: new Date().toISOString(), ...registro }) + "\n");
+    fs.appendFileSync(arquivoAuditoria, linha + "\n");
+  }
+
+  async function lerMedalhistas(uf, ibge) {
+    if (redis) return JSON.parse((await redis.cmd("GET", "medalhistas:" + ibge)) || "[]");
+    try {
+      return JSON.parse(fs.readFileSync(path.join(config.raizPrivado, "medalhistas", uf + ".json"), "utf8"))[ibge] || [];
+    } catch (err) {
+      if (err.code !== "ENOENT") throw err;
+      return [];
+    }
   }
 
   const texto = (v) => (typeof v === "string" ? v : undefined);
@@ -141,22 +156,17 @@ function criarDados(config) {
     }));
 
     // Lista de medalhistas: dado pessoal. Cada abertura gera registro de auditoria; o nome só sai com o flag ligado.
-    app.get("/api/municipio/:ibge/medalhistas", exigirLogin, protegido((req, res) => {
-      // Sem disco gravável não há como auditar nem guardar dado pessoal: a lista fica indisponível.
-      if (config.somenteLeitura) return res.status(503).json({ erro: "indisponivel_neste_ambiente" });
+    app.get("/api/municipio/:ibge/medalhistas", exigirLogin, protegido(async (req, res) => {
+      // Sem disco gravável nem Redis não há como auditar nem guardar dado pessoal: a lista fica indisponível.
+      if (config.somenteLeitura && !redis) return res.status(503).json({ erro: "indisponivel_neste_ambiente" });
       const ibge = req.params.ibge;
       if (!/^\d{7}$/.test(ibge)) return res.status(400).json({ erro: "codigo_invalido" });
       carregarBase();
       const uf = ufsPorCodigo[ibge.slice(0, 2)];
       if (!uf || !UFS.has(uf)) return res.status(404).json({ erro: "municipio_desconhecido" });
-      let lista = [];
+      const lista = await lerMedalhistas(uf, ibge);
       try {
-        lista = JSON.parse(fs.readFileSync(path.join(config.raizPrivado, "medalhistas", uf + ".json"), "utf8"))[ibge] || [];
-      } catch (err) {
-        if (err.code !== "ENOENT") throw err;
-      }
-      try {
-        auditar({ email: req.session.email, acao: "abrir_lista_medalhistas", municipio: ibge, uf, identificado: config.alunoIdentificado, n: lista.length });
+        await auditar({ email: req.session.email, acao: "abrir_lista_medalhistas", municipio: ibge, uf, identificado: config.alunoIdentificado, n: lista.length });
       } catch (err) {
         console.error("Falha ao gravar a auditoria:", err);
         return res.status(500).json({ erro: "auditoria_indisponivel" });

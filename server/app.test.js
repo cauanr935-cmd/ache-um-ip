@@ -163,7 +163,7 @@ test("busca, favoritos, ficha da escola e medalhistas com auditoria e pseudonimi
   });
   escrever(raizApi, "escola/SP.json", { 35910818: { nome: "ETEC DE SAO PAULO", rede: "Estadual", municipio: "3550308", uf: "SP", series: { em: [] }, tem_medalhista: true, n_medalhistas: 1 } });
   escrever(raizPrivado, "medalhistas/SP.json", {
-    3550308: [{ pseudonimo: "A.B. #ABC123", nome: "ANA BELA", medalha: "Ouro", olimpiada: "OBMEP", ano: 2024, escola: "ETEC", escola_inep: "35910818" }],
+    3550308: [{ pseudonimo: "A.B. #ABC123", nome: "ANA BELA", medalha: "Ouro", olimpiada: "OBMEP", ano: 2024, escola: "ETEC", escola_inep: "35910818", fonte: "http://premiacao.obmep.org.br/19obmep/mapa.htm" }],
   });
 
   const abrir = (alunoIdentificado) => criarApp({ config: { ...config, raizApi, raizPrivado, alunoIdentificado }, verificarToken: verificarFalso }).listen(0);
@@ -194,6 +194,7 @@ test("busca, favoritos, ficha da escola e medalhistas com auditoria e pseudonimi
     assert.equal(lista.identificado, false);
     assert.equal(lista.lista[0].pseudonimo, "A.B. #ABC123");
     assert.equal("nome" in lista.lista[0], false);
+    assert.equal(lista.lista[0].fonte, "http://premiacao.obmep.org.br/19obmep/mapa.htm");
     await fetch(base + "/api/municipio/3550308/medalhistas", h);
     const linhas = fs.readFileSync(path.join(raizPrivado, "auditoria.jsonl"), "utf8").trim().split("\n").map(JSON.parse);
     assert.equal(linhas.length, 2);
@@ -227,4 +228,47 @@ test("busca, favoritos, ficha da escola e medalhistas com auditoria e pseudonimi
     const ultima = fs.readFileSync(path.join(raizPrivado, "auditoria.jsonl"), "utf8").trim().split("\n").map(JSON.parse).pop();
     assert.equal(ultima.identificado, true);
   } finally { ligado.closeAllConnections(); ligado.close(); }
+});
+
+// Vercel: disco somente leitura, mas com Redis a lista de medalhistas funciona e a auditoria vai para o Redis.
+test("medalhistas e auditoria via Redis quando o disco é somente leitura", async () => {
+  const fs = require("node:fs");
+  const os = require("node:os");
+  const path = require("node:path");
+  const guardado = new Map([["medalhistas:3550308", JSON.stringify([{ pseudonimo: "A.B. #1", nome: "ANA BELA", medalha: "Ouro", olimpiada: "OBMEP", ano: 2024, escola: "ETEC", fonte: "http://f" }])]]);
+  const auditoria = [];
+  const redisFalso = require("node:http").createServer((req, res) => {
+    let corpo = "";
+    req.on("data", (c) => (corpo += c));
+    req.on("end", () => {
+      const [cmd, chave, valor] = JSON.parse(corpo);
+      if (req.headers.authorization !== "Bearer tok") { res.statusCode = 401; return res.end("{}"); }
+      if (cmd === "GET") return res.end(JSON.stringify({ result: guardado.get(chave) ?? null }));
+      if (cmd === "RPUSH") { auditoria.push(JSON.parse(valor)); return res.end(JSON.stringify({ result: auditoria.length })); }
+      res.end(JSON.stringify({ result: null }));
+    });
+  }).listen(0);
+  const redis = { url: `http://127.0.0.1:${redisFalso.address().port}`, token: "tok" };
+  const raizApi = fs.mkdtempSync(path.join(os.tmpdir(), "ache-api-"));
+  fs.writeFileSync(path.join(raizApi, "recortes.json"), "{}");
+  fs.writeFileSync(path.join(raizApi, "ufs.json"), JSON.stringify({ 35: "SP" }));
+  const abrir = (cfg) => criarApp({ config: { ...config, raizApi, somenteLeitura: true, alunoIdentificado: true, ...cfg }, verificarToken: verificarFalso }).listen(0);
+  const sem = abrir({});
+  const com = abrir({ redis });
+  try {
+    const baseSem = `http://127.0.0.1:${sem.address().port}`;
+    const hSem = { headers: { Cookie: cookieDe(await login(baseSem, "ana@institutoponte.org.br")) } };
+    assert.equal((await fetch(baseSem + "/api/municipio/3550308/medalhistas", hSem)).status, 503);
+
+    const base = `http://127.0.0.1:${com.address().port}`;
+    const h = { headers: { Cookie: cookieDe(await login(base, "ana@institutoponte.org.br")) } };
+    const lista = await (await fetch(base + "/api/municipio/3550308/medalhistas", h)).json();
+    assert.equal(lista.lista[0].nome, "ANA BELA");
+    assert.equal(lista.lista[0].fonte, "http://f");
+    assert.equal(auditoria.length, 1);
+    assert.equal(auditoria[0].email, "ana@institutoponte.org.br");
+    assert.equal(auditoria[0].identificado, true);
+  } finally {
+    for (const x of [sem, com, redisFalso]) { x.closeAllConnections(); x.close(); }
+  }
 });

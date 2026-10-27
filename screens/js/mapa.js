@@ -731,9 +731,16 @@ function desenharListaMedalhistas(secao, codigo) {
     }
     const t = secao.append("div").attr("class", "rolagem-tabela").append("table");
     t.append("caption").attr("class", "so-leitor").text("Medalhistas do município");
-    t.append("thead").append("tr").selectAll("th").data(["Aluno", "Medalha", "Olimpíada", "Ano", "Escola"]).join("th").attr("scope", "col").text(function (c) { return c; });
+    t.append("thead").append("tr").selectAll("th").data(["Aluno", "Medalha", "Olimpíada", "Ano", "Escola", "Fonte oficial"]).join("th").attr("scope", "col").text(function (c) { return c; });
     t.append("tbody").selectAll("tr").data(dados.lista.slice(0, 200)).join("tr")
-        .selectAll("td").data(function (m) { return [m.nome || m.pseudonimo, m.medalha, m.olimpiada, m.ano, m.escola]; }).join("td").text(function (c) { return c; });
+        .selectAll("td").data(function (m) { return [m.nome || m.pseudonimo, m.medalha, m.olimpiada, m.ano, m.escola, m.fonte]; }).join("td")
+        .each(function (c, i) {
+            const celula = d3.select(this);
+            if (i < 5) return celula.text(c);
+            // Link para a página oficial da olimpíada de onde a lista foi tirada.
+            if (c) celula.append("a").attr("href", c).attr("target", "_blank").attr("rel", "noopener noreferrer").text("Abrir página");
+            else celula.text("-");
+        });
     if (dados.total > 200) secao.append("p").attr("class", "nota-painel").text("Mostrando 200 de " + formatoInteiro.format(dados.total) + ".");
     secao.append("button").attr("type", "button").attr("class", "botao-secundario").text("Ocultar lista")
         .on("click", function () { estado.listaMedalhistas = null; atualizarPainel(); });

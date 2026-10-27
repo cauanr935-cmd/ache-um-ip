@@ -39,6 +39,22 @@ MOTIVO_SEXO = "Esta base não traz o recorte por sexo nas notas e nas medalhas."
 MOTIVO_RENDA = "Esta base não cruza renda com nota ou medalha por aluno; o proxy de renda aparece só no contexto do município."
 
 
+# Página oficial de onde vieram os medalhistas de cada edição. Os endereços saem de https://www.obmep.org.br/premiados.htm
+# e de https://olimpiada.ic.unicamp.br/passadas/; o ano das edições 16ª a 18ª está em config/obmep_anos.yaml.
+FONTE_OBMEP = {
+    2016: "2016/mapa_premiacao_content.htm", 2017: "2017/mapa_premiacao_content.htm", 2018: "2018/mapa.htm", 2019: "2019/mapa.htm",
+    2021: "16aobmep/mapa.htm", 2022: "17obmep/mapa.htm", 2023: "18obmep/mapa.htm", 2024: "19obmep/mapa.htm", 2025: "20obmep/mapa.htm",
+}
+
+
+def fonte_oficial(olimpiada, ano):
+    if olimpiada == "OBMEP" and ano in FONTE_OBMEP:
+        return "http://premiacao.obmep.org.br/" + FONTE_OBMEP[ano]
+    if olimpiada == "OBI":
+        return f"https://olimpiada.ic.unicamp.br/passadas/OBI{ano}/"
+    return None
+
+
 def num(x, casas=2):
     return None if x is None or pd.isna(x) else round(float(x), casas)
 
@@ -255,7 +271,8 @@ for uf, grupo in mi.groupby("uf"):
     por_municipio = {}
     for co, g in grupo.sort_values(["_o", "ano"], ascending=[True, False]).groupby("co_municipio"):
         por_municipio[co] = [{"pseudonimo": r.pseudonimo, "nome": r.nome, "medalha": r.medalha, "olimpiada": r.olimpiada,
-                              "ano": int(r.ano), "escola": r.escola, "escola_inep": None if pd.isna(r.escola_inep) else r.escola_inep}
+                              "ano": int(r.ano), "escola": r.escola, "escola_inep": None if pd.isna(r.escola_inep) else r.escola_inep,
+                              "fonte": fonte_oficial(r.olimpiada, int(r.ano))}
                              for r in g.itertuples()]
     gravar(PRIVADO / f"{uf}.json", por_municipio)
 
