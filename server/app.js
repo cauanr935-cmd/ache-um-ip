@@ -7,6 +7,7 @@ const { emailAutorizado, sessaoDoPayload, usuarioPublico } = require("./auth");
 // Páginas e arquivos que o visitante ainda não logado precisa para ver a tela de login.
 const PUBLICOS = new Set([
   "/html/index.html",
+  "/html/sobre.html",
   "/css/style.css",
   "/js/login.js",
   "/assets/placeholder_usuario.png",

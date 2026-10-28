@@ -198,3 +198,48 @@ body {
     padding: 5px 15px;
     margin-top: 0.5em;
 }
+
+.pagina-sobre {
+    max-width: 760px;
+    margin-bottom: 2em;
+    line-height: 1.6;
+}
+
+.pagina-sobre h1,
+.pagina-sobre h2 {
+    color: var(--ponte-roxo-escuro);
+}
+
+.pagina-sobre h2 {
+    margin-top: 1.2em;
+    font-size: 1.15em;
+}
+
+.pagina-sobre p,
+.pagina-sobre li {
+    margin-top: 0.4em;
+}
+
+.pagina-sobre ul {
+    padding-left: 1.4em;
+}
+
+.pagina-sobre ul li {
+    list-style: disc;
+}
+
+.pagina-sobre .destaque {
+    font-size: 1.1em;
+    font-weight: 500;
+}
+
+.botao-chamada {
+    display: inline-block;
+    margin-top: 1.5em;
+    padding: 0.5em 1.4em;
+    border-radius: 50px;
+    background-color: var(--ponte-amarelo);
+    color: var(--ponte-roxo-escuro);
+    font-weight: 700;
+    text-decoration: none;
+}
