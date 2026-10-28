@@ -23,6 +23,7 @@ import yaml
 
 from caminhos import RAIZ
 from elegibilidade import ensino_medio
+import ocmat
 from lgpd import carregar_sal, sha256
 from recortes import anexar_etapa
 
@@ -153,11 +154,15 @@ for rede in ("publica", "todas"):
         emitir("enem", "em", int(ano), rede, u, m)
 
 # ---------- Olimpiadas (medalhas por 100 mil habitantes) ----------
+OCMAT_MEDALHISTAS, OCMAT_CONTAGEM = ocmat.carregar()
+med = pd.concat([med, OCMAT_CONTAGEM], ignore_index=True)
 med = med[med.medalha.isin(MEDALHAS_VALIDAS) & med.ano.between(ANO_MIN_OLIMPIADA, ANO_MAX_OLIMPIADA)]
-nomes_olimpiada = {"OBMEP": ("OBMEP", ["publica", "todas"]), "OBI": ("OBI", ["todas"])}  # OBI não informa a rede da escola
+# OBI não informa a rede da escola. OCMAT: só rede estadual (pública), 1ª edição em 2025; os anos vêm dos dados.
+nomes_olimpiada = {"OBMEP": ("OBMEP", ["publica", "todas"]), "OBI": ("OBI", ["todas"]), "OCMAT": ("OCMAT", ["publica"])}
+ANOS_DA = {"OCMAT": sorted(OCMAT_CONTAGEM["ano"].unique(), reverse=True)}
 for chave, (olimp, redes) in nomes_olimpiada.items():
     catalogo["provas"][chave.lower()] = {
-        "nome": olimp, "etapas": ["ef2", "em"], "anos": ["todos"] + list(range(ANO_MAX_OLIMPIADA, ANO_MIN_OLIMPIADA - 1, -1)),
+        "nome": olimp, "etapas": ["ef2", "em"], "anos": ["todos"] + [int(a) for a in ANOS_DA.get(olimp, range(ANO_MAX_OLIMPIADA, ANO_MIN_OLIMPIADA - 1, -1))],
         "redes": redes, "motivo_rede": "A OBI não informa a rede da escola." if chave == "OBI" else None,
         "metrica": {"titulo": f"Medalhas na {olimp} por 100 mil habitantes", "curta": "medalhas/100 mil hab.", "casas": 1},
     }
@@ -165,7 +170,7 @@ for chave, (olimp, redes) in nomes_olimpiada.items():
         base = med[(med.olimpiada == olimp) & med.etapa.isin(grupo)]
         for rede in redes:
             b = base if rede == "todas" else base[base.rede_grupo == rede]
-            for ano in ["todos"] + list(range(ANO_MAX_OLIMPIADA, ANO_MIN_OLIMPIADA - 1, -1)):
+            for ano in ["todos"] + [int(a) for a in ANOS_DA.get(olimp, range(ANO_MAX_OLIMPIADA, ANO_MIN_OLIMPIADA - 1, -1))]:
                 bb = b if ano == "todos" else b[b.ano == ano]
                 # Soma o n bruto e aplica N_MIN sobre o total publicado (a celula de origem ja pode estar suprimida).
                 m = bb.groupby("co_municipio")["n"].sum().reindex(dim["co_municipio"], fill_value=0).rename("n").reset_index()
@@ -195,6 +200,7 @@ med_tot = med.groupby(["co_municipio", "olimpiada", "medalha"])["n"].sum()
 # Medalhistas individuais (so em data/privado). Escola vinculada so quando o linkage foi automatico.
 mi = pd.read_parquet(INTERIM / "medalhistas_enriquecido.parquet")
 mi = mi[~mi["linha_duplicada"] & mi["medalha"].isin(MEDALHAS_VALIDAS) & mi["ano"].between(ANO_MIN_OLIMPIADA, ANO_MAX_OLIMPIADA) & mi["co_municipio"].notna()].copy()
+mi = pd.concat([mi, OCMAT_MEDALHISTAS], ignore_index=True)
 SAL = carregar_sal()
 COM_MEDALHISTA = set(mi["co_entidade"].dropna().astype(str))  # escola destaque tambem por >= 1 medalhista (specs.md 4.6)
 
@@ -276,7 +282,8 @@ for uf, grupo in mi.groupby("uf"):
     for co, g in grupo.sort_values(["_o", "ano"], ascending=[True, False]).groupby("co_municipio"):
         por_municipio[co] = [{"pseudonimo": r.pseudonimo, "nome": r.nome, "medalha": r.medalha, "olimpiada": r.olimpiada,
                               "ano": int(r.ano), "escola": r.escola, "escola_inep": None if pd.isna(r.escola_inep) else r.escola_inep,
-                              "fonte": fonte_oficial(r.olimpiada, int(r.ano)), "ensino_medio": bool(r.ensino_medio)}
+                              "fonte": r.fonte if isinstance(r.fonte, str) else fonte_oficial(r.olimpiada, int(r.ano)), "ensino_medio": bool(r.ensino_medio),
+                              "nivel": None if pd.isna(r.nivel) else str(r.nivel), "aviso": r.aviso if isinstance(r.aviso, str) else None}
                              for r in g.itertuples()]
     gravar(PRIVADO / f"{uf}.json", por_municipio)
 

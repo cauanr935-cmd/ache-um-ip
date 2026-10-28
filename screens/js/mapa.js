@@ -24,6 +24,7 @@ const estado = {
     fichas: new Map(),
     favoritos: [],
     listaMedalhistas: null,     // {codigo, dados}: só existe depois de o usuário pedir a lista
+    alunosIP: null,             // municípios com alunos do Instituto Ponte (filtro de pinos); carregado sob demanda
     dadosUF: new Map(),
     dadosMunicipio: new Map(),
     corUF: null,
@@ -46,6 +47,7 @@ window.addEventListener("load", async function () {
         const [topo, dadosUF] = await Promise.all([buscarJSON("/api/geo/br_uf"), buscarDadosMapa("uf", null, estado.filtros)]);
         iniciarMapa(topojson.feature(topo, topo.objects.ufs), dadosUF);
         iniciarFiltros(estado.filtros, function () { estado.acoes.aplicarFiltros(); });
+        iniciarFiltroAlunosIP();
         estado.favoritos = await listarFavoritos().catch(function () { return []; });
         iniciarBusca();
     } catch (err) {
@@ -93,6 +95,8 @@ function iniciarMapa(geoUFs, dadosIniciaisUF) {
     const camadaUFs = camada.append("g");
     const camadaMunicipios = camada.append("g");
     const camadaRotulos = camada.append("g");
+    const camadaPinos = camada.append("g").attr("class", "camada-pinos");
+    let zoomAtual = 1;
 
     const projecao = d3.geoMercator().fitExtent([[10, 10], [LARGURA - 10, ALTURA - 10]], geoUFs);
     const caminho = d3.geoPath(projecao);
@@ -138,6 +142,8 @@ function iniciarMapa(geoUFs, dadosIniciaisUF) {
         .translateExtent([[0, 0], [LARGURA, ALTURA]])
         .on("zoom", function (evento) {
             camada.attr("transform", evento.transform);
+            zoomAtual = evento.transform.k;
+            camadaPinos.selectAll("g.pino").attr("transform", transformacaoDoPino);
             // Rótulos mantêm o tamanho na tela em qualquer zoom.
             rotulos.style("font-size", (11 / evento.transform.k) + "px")
                 .style("stroke-width", (3 / evento.transform.k) + "px");
@@ -313,12 +319,48 @@ function iniciarMapa(geoUFs, dadosIniciaisUF) {
         .on("focus", function (evento, f) { mostrarTooltipFoco(evento.currentTarget, textoTooltip(f.properties, estado.dadosUF)); })
         .on("blur", esconderTooltip);
 
+    // ----- Pinos dos alunos do Instituto Ponte (filtro "cidades com alunos do IP") -----
+
+    // O pino mantém o tamanho na tela em qualquer zoom; a ponta fica sobre o centro do município.
+    function transformacaoDoPino(m) {
+        const [x, y] = projecao([m.lon, m.lat]);
+        return "translate(" + x + "," + y + ") scale(" + (1 / zoomAtual) + ")";
+    }
+
+    function textoDoPino(m) {
+        return m.municipio + " (" + m.uf + "): " + m.alunos.length + (m.alunos.length === 1 ? " aluno" : " alunos") + " do Instituto Ponte";
+    }
+
+    function abrirMunicipioDoPino(m) {
+        estado.acoes.irParaLocal({ uf: m.uf, municipio: m.codigo });
+    }
+
+    function desenharPinos() {
+        const dados = estado.mostrarAlunosIP && estado.alunosIP ? estado.alunosIP : [];
+        camadaPinos.selectAll("g.pino")
+            .data(dados, function (m) { return m.codigo; })
+            .join(function (entrada) {
+                const pino = entrada.append("g").attr("class", "pino").attr("tabindex", 0).attr("role", "button");
+                pino.append("path").attr("d", "M0,0 C-5,-8 -9,-12 -9,-17 A9,9 0 1 1 9,-17 C9,-12 5,-8 0,0 Z");
+                pino.append("circle").attr("cy", -17).attr("r", 3.5);
+                return pino;
+            })
+            .attr("transform", transformacaoDoPino)
+            .attr("aria-label", textoDoPino)
+            .on("click", function (evento, m) { evento.stopPropagation(); if (evento.detail > 0) evento.currentTarget.blur(); abrirMunicipioDoPino(m); })
+            .on("keydown", function (evento, m) { aoTeclar(evento, function () { abrirMunicipioDoPino(m); }); })
+            .on("mousemove", function (evento, m) { mostrarTooltip(evento, textoDoPino(m)); })
+            .on("mouseleave", esconderTooltip)
+            .on("focus", function (evento, m) { mostrarTooltipFoco(evento.currentTarget, textoDoPino(m)); })
+            .on("blur", esconderTooltip);
+    }
+
     zoomMais.addEventListener("click", function () { svg.transition().duration(250).call(zoom.scaleBy, 1.6); });
     zoomMenos.addEventListener("click", function () { svg.transition().duration(250).call(zoom.scaleBy, 1 / 1.6); });
     zoomReset.addEventListener("click", irParaBrasil);
     btnVoltar.addEventListener("click", voltar);
 
-    estado.acoes = { irParaBrasil: irParaBrasil, voltarParaUF: voltarParaUF, aplicarFiltros: aplicarFiltros, irParaLocal: irParaLocal };
+    estado.acoes = { irParaBrasil: irParaBrasil, voltarParaUF: voltarParaUF, aplicarFiltros: aplicarFiltros, irParaLocal: irParaLocal, desenharPinos: desenharPinos };
     desenharLegenda(estado.corUF, tituloLegendaUF());
     atualizarBreadcrumb();
     atualizarPainel();
@@ -542,11 +584,51 @@ function painelDoMunicipio(mun) {
 
 const ESCOLAS_POR_PAGINA = 10;
 
+// Filtro "cidades com alunos do Instituto Ponte": pino nas cidades de origem; o clique leva ao município,
+// onde o painel lista os alunos. A lista só é baixada na primeira vez que o filtro é ligado.
+function iniciarFiltroAlunosIP() {
+    const campo = document.getElementById("fAlunosIP");
+    const aviso = document.getElementById("filtrosAviso");
+    campo.addEventListener("change", async function () {
+        estado.mostrarAlunosIP = campo.checked;
+        if (campo.checked && !estado.alunosIP) {
+            campo.disabled = true;
+            try {
+                estado.alunosIP = await buscarAlunosIP();
+            } catch (err) {
+                console.error("Falha ao carregar os alunos do Instituto Ponte:", err);
+                estado.mostrarAlunosIP = false;
+                campo.checked = false;
+                aviso.textContent = "Não foi possível carregar os alunos do Instituto Ponte.";
+                aviso.hidden = false;
+            }
+            campo.disabled = false;
+        } else {
+            aviso.hidden = true;
+        }
+        estado.acoes.desenharPinos();
+        atualizarPainel();
+    });
+}
+
 function desenharSecoesMunicipio(painel, p) {
     function secao(titulo) {
         const s = painel.append("section").attr("class", "secao-painel");
         s.append("h3").text(titulo);
         return s;
+    }
+
+    const doIP = estado.mostrarAlunosIP && estado.alunosIP ? estado.alunosIP.find(function (m) { return m.codigo === p.codigo; }) : null;
+    if (doIP) {
+        const alunosIP = secao("Alunos do Instituto Ponte (" + doIP.alunos.length + ")");
+        alunosIP.append("p").attr("class", "nota-painel").text("Alunos cuja cidade de origem é " + doIP.municipio + ". Fonte: página oficial do Instituto Ponte.");
+        const ul = alunosIP.append("ul").attr("class", "lista-alunos-ip");
+        doIP.alunos.forEach(function (a) {
+            const li = ul.append("li");
+            li.append("a").attr("href", a.url).attr("target", "_blank").attr("rel", "noopener noreferrer").text(a.nome);
+            const detalhes = [a.desde ? "aluno desde " + a.desde : null, a.escola_origem ? "escola de origem: " + a.escola_origem : null].filter(Boolean).join(" · ");
+            if (detalhes) li.append("small").text(detalhes);
+        });
     }
     function tabela(s, legenda, cabecalho, linhas) {
         const t = s.append("table");
@@ -737,9 +819,15 @@ function desenharListaMedalhistas(secao, codigo) {
     t.append("caption").attr("class", "so-leitor").text("Medalhistas do município");
     t.append("thead").append("tr").selectAll("th").data(["Aluno", "Medalha", "Olimpíada", "Ano", "Escola", "Fonte oficial"]).join("th").attr("scope", "col").text(function (c) { return c; });
     t.append("tbody").selectAll("tr").data(dados.lista.slice(0, 200)).join("tr")
-        .selectAll("td").data(function (m) { return [m.nome || m.pseudonimo, m.medalha, m.olimpiada, m.ano, m.escola, m.fonte]; }).join("td")
+        .selectAll("td").data(function (m) { return [m.nome || m.pseudonimo, m.medalha, m, m.ano, m.escola, m.fonte]; }).join("td")
         .each(function (c, i) {
             const celula = d3.select(this);
+            if (i === 2) {
+                // Olimpíada; na OCMAT o nível aparece sempre, e os níveis 1 e 4 (séries misturadas) vêm com aviso.
+                celula.text(c.nivel && c.olimpiada === "OCMAT" ? "OCMAT, nível " + c.nivel : c.olimpiada);
+                if (c.aviso) celula.append("small").attr("class", "aviso-nivel").text("⚠ " + c.aviso);
+                return;
+            }
             if (i < 5) return celula.text(c);
             // Link para a página oficial da olimpíada de onde a lista foi tirada.
             if (c) celula.append("a").attr("href", c).attr("target", "_blank").attr("rel", "noopener noreferrer").text("Abrir página");

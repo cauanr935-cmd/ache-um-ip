@@ -282,3 +282,22 @@ test("elegibilidade: ensino médio só até o ano seguinte à medalha; fundament
   assert.ok(!elegivel(em(2016), 2026));
   assert.ok(elegivel({ ensino_medio: false, ano: 2016 }, 2026));
 });
+
+test("alunos do Instituto Ponte: só logado, com auditoria", async () => {
+  const fs = require("node:fs");
+  const path = require("node:path");
+  const os = require("node:os");
+  const raizPrivado = fs.mkdtempSync(path.join(os.tmpdir(), "ache-priv-"));
+  const lista = [{ codigo: "3205200", municipio: "Vila Velha", uf: "ES", lon: -40.3, lat: -20.3, alunos: [{ nome: "ANA", desde: 2023, url: "https://x" }] }];
+  fs.writeFileSync(path.join(raizPrivado, "alunos_ip_mapa.json"), JSON.stringify(lista));
+  const servidor = criarApp({ config: { ...config, raizPrivado }, verificarToken: verificarFalso }).listen(0);
+  const base = `http://127.0.0.1:${servidor.address().port}`;
+  try {
+    assert.equal((await fetch(base + "/api/alunos-ip")).status, 401);
+    const h = { headers: { Cookie: cookieDe(await login(base, "ana@institutoponte.org.br")) } };
+    assert.deepEqual(await (await fetch(base + "/api/alunos-ip", h)).json(), lista);
+    const linhas = fs.readFileSync(path.join(raizPrivado, "auditoria.jsonl"), "utf8").trim().split("\n").map(JSON.parse);
+    assert.equal(linhas[0].acao, "abrir_alunos_ip");
+    assert.equal(linhas[0].n, 1);
+  } finally { servidor.closeAllConnections(); servidor.close(); }
+});

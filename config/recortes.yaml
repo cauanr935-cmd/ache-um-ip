@@ -14,6 +14,13 @@ medalhistas:
     "1": {etapa: EF2, serie: "6o-7o ano EF"}
     "2": {etapa: EF2, serie: "8o-9o ano EF"}
     "3": {etapa: EM,  serie: "Ensino Medio"}
+  # OCMAT (Olimpiada Capixaba de Matematica, 1a edicao em 2025): niveis do regulamento. Os niveis 1 e 4 misturam series
+  # (6o e 7o; 2a e 3a serie): a tela avisa quando o medalhista e desses niveis.
+  OCMAT:
+    "1": {etapa: EF2, serie: "6o-7o ano EF"}
+    "2": {etapa: EF2, serie: "8o-9o ano EF"}
+    "3": {etapa: EM,  serie: "1a serie EM"}
+    "4": {etapa: EM,  serie: "2a e 3a series EM"}
   OBI:
     "Iniciação":
       "Júnior": {etapa: EF1, serie: "4o-5o ano EF"}

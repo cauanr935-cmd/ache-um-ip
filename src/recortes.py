@@ -14,8 +14,8 @@ def etapa_medalhista(olimpiada: str, modalidade, nivel) -> str | None:
     """etapa a partir de (olimpiada, modalidade, nivel); None se nao mapeado."""
     c = CFG["medalhistas"]
     nivel = None if nivel is None or pd.isna(nivel) else str(nivel)
-    if olimpiada == "OBMEP":
-        return (c["OBMEP"].get(nivel) or {}).get("etapa")
+    if olimpiada in ("OBMEP", "OCMAT"):
+        return (c[olimpiada].get(nivel) or {}).get("etapa")
     if olimpiada == "OBI":
         mod = (modalidade or "").replace("CF-OBI ", "")
         if mod == "Universitária":

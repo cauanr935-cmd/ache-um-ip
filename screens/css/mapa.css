@@ -510,3 +510,57 @@ svg:focus-visible {
     font: inherit;
     text-decoration: underline;
 }
+
+/* Pinos das cidades com alunos do Instituto Ponte. */
+.pino {
+    cursor: pointer;
+}
+
+.pino path {
+    fill: var(--ponte-amarelo);
+    stroke: var(--roxo-marca);
+    stroke-width: 1.5px;
+}
+
+.pino circle {
+    fill: var(--roxo-marca);
+}
+
+.pino:hover path,
+.pino:focus-visible path {
+    fill: #ffc85c;
+}
+
+.lista-alunos-ip {
+    list-style: none;
+    padding: 0;
+    margin: 0.5em 0 0;
+    max-height: 320px;
+    overflow-y: auto;
+}
+
+.lista-alunos-ip li {
+    display: flex;
+    flex-direction: column;
+    padding: 0.4em 0;
+    border-bottom: 1px solid #ddd;
+}
+
+.lista-alunos-ip a {
+    color: var(--roxo-marca);
+    font-weight: 700;
+}
+
+.lista-alunos-ip small {
+    color: #555;
+}
+
+/* Aviso de nível da OCMAT (níveis 1 e 4 misturam séries dentro e fora do perfil do IP). */
+.aviso-nivel {
+    display: block;
+    margin-top: 0.2em;
+    padding: 0.15em 0.4em;
+    border-radius: 4px;
+    background-color: #fdeccb;
+    color: #6b4600;
+}

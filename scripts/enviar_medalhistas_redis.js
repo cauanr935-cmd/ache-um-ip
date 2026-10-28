@@ -1,4 +1,4 @@
-// Envia data/privado/medalhistas/<UF>.json para o Redis privado (Upstash / Vercel KV), uma chave por município:
+// Envia os medalhistas (data/privado/medalhistas/<UF>.json) e os alunos do IP (alunos_ip_mapa.json) para o Redis privado (Upstash / Vercel KV), uma chave por município:
 //   medalhistas:<ibge>  ->  JSON da lista. Rode depois de src/api_precompute.py. Precisa de KV_REST_API_URL e
 //   KV_REST_API_TOKEN (no .env ou no ambiente). Os nomes nunca vão para o git.
 const fs = require("node:fs");
@@ -45,6 +45,13 @@ async function main() {
   }
   await enviar();
   console.log("Enviados", total, "municípios.");
+
+  // Alunos do Instituto Ponte para o filtro do mapa (scripts/gerar_alunos_ip_mapa.js), numa única chave.
+  const alunosIP = path.resolve(__dirname, "../data/privado/alunos_ip_mapa.json");
+  if (fs.existsSync(alunosIP)) {
+    await redis.cmd("SET", "alunos_ip", fs.readFileSync(alunosIP, "utf8"));
+    console.log("Alunos do IP enviados.");
+  }
 }
 
 main().catch((err) => { console.error(err); process.exit(1); });

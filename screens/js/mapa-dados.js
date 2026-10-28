@@ -64,3 +64,9 @@ function adicionarFavorito(tipo, id) {
 function removerFavorito(tipo, id) {
     return enviarJSON("DELETE", "/api/favoritos/" + encodeURIComponent(tipo) + "/" + encodeURIComponent(id));
 }
+
+// Alunos do Instituto Ponte por município de origem: [{codigo, municipio, uf, lon, lat, alunos: [...]}].
+// Cada chamada gera registro de auditoria no servidor; o mapa.js guarda o resultado para não repetir.
+function buscarAlunosIP() {
+    return buscarJSON("/api/alunos-ip");
+}

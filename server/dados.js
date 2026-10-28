@@ -177,6 +177,21 @@ function criarDados(config) {
       res.set("Cache-Control", "no-store").json({ identificado: config.alunoIdentificado, total: saida.length, fora_do_criterio: todos.length - lista.length, lista: saida });
     }));
 
+    // Alunos do Instituto Ponte por município de origem, para o filtro de pinos do mapa. Nome de aluno é dado pessoal:
+    // atrás do login e com registro de auditoria a cada abertura.
+    app.get("/api/alunos-ip", exigirLogin, protegido(async (req, res) => {
+      if (config.somenteLeitura && !redis) return res.status(503).json({ erro: "indisponivel_neste_ambiente" });
+      const bruto = redis ? await redis.cmd("GET", "alunos_ip") : fs.readFileSync(path.join(config.raizPrivado, "alunos_ip_mapa.json"), "utf8");
+      const lista = JSON.parse(bruto || "[]");
+      try {
+        await auditar({ email: req.session.email, acao: "abrir_alunos_ip", n: lista.reduce((n, m) => n + m.alunos.length, 0) });
+      } catch (err) {
+        console.error("Falha ao gravar a auditoria:", err);
+        return res.status(500).json({ erro: "auditoria_indisponivel" });
+      }
+      res.set("Cache-Control", "no-store").json(lista);
+    }));
+
     // ---- Favoritos (por usuário) ----
     app.get("/api/favoritos", exigirLogin, protegido(async (req, res) => {
       res.set("Cache-Control", "no-store").json(await favoritos.listar(req.session.email));
