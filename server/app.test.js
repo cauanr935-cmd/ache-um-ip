@@ -2,6 +2,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const { criarApp } = require("./app");
 const { emailAutorizado } = require("./auth");
+const { elegivel } = require("./medalhistas");
 
 const config = {
   producao: false,
@@ -271,4 +272,13 @@ test("medalhistas e auditoria via Redis quando o disco é somente leitura", asyn
   } finally {
     for (const x of [sem, com, redisFalso]) { x.closeAllConnections(); x.close(); }
   }
+});
+
+test("elegibilidade: ensino médio só até o ano seguinte à medalha; fundamental não entra na regra", () => {
+  const em = (ano) => ({ ensino_medio: true, ano });
+  assert.ok(elegivel(em(2025), 2026));  // ganhou no ano passado
+  assert.ok(elegivel(em(2026), 2026));  // ganhou neste ano
+  assert.ok(!elegivel(em(2024), 2026)); // já estaria no 3º ano
+  assert.ok(!elegivel(em(2016), 2026));
+  assert.ok(elegivel({ ensino_medio: false, ano: 2016 }, 2026));
 });

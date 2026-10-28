@@ -6,6 +6,7 @@ const { UFS } = require("./ufs");
 const { criarIndice, buscar } = require("./busca");
 const { criarFavoritos } = require("./favoritos");
 const { criarRedis, redisConfigurado } = require("./redis");
+const { elegivel } = require("./medalhistas");
 
 function criarDados(config) {
   const raiz = config.raizApi;
@@ -164,15 +165,16 @@ function criarDados(config) {
       carregarBase();
       const uf = ufsPorCodigo[ibge.slice(0, 2)];
       if (!uf || !UFS.has(uf)) return res.status(404).json({ erro: "municipio_desconhecido" });
-      const lista = await lerMedalhistas(uf, ibge);
+      const todos = await lerMedalhistas(uf, ibge);
+      const lista = todos.filter((m) => elegivel(m));
       try {
-        await auditar({ email: req.session.email, acao: "abrir_lista_medalhistas", municipio: ibge, uf, identificado: config.alunoIdentificado, n: lista.length });
+        await auditar({ email: req.session.email, acao: "abrir_lista_medalhistas", municipio: ibge, uf, identificado: config.alunoIdentificado, n: lista.length, fora_do_criterio: todos.length - lista.length });
       } catch (err) {
         console.error("Falha ao gravar a auditoria:", err);
         return res.status(500).json({ erro: "auditoria_indisponivel" });
       }
-      const saida = lista.map(({ nome, ...resto }) => (config.alunoIdentificado ? { ...resto, nome } : resto));
-      res.set("Cache-Control", "no-store").json({ identificado: config.alunoIdentificado, total: saida.length, lista: saida });
+      const saida = lista.map(({ nome, ensino_medio, ...resto }) => (config.alunoIdentificado ? { ...resto, nome } : resto));
+      res.set("Cache-Control", "no-store").json({ identificado: config.alunoIdentificado, total: saida.length, fora_do_criterio: todos.length - lista.length, lista: saida });
     }));
 
     // ---- Favoritos (por usuário) ----

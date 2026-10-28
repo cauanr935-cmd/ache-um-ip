@@ -1,0 +1,32 @@
+# Elegibilidade de medalhistas das olimpíadas (OBMEP e OBI) para o processo seletivo do Instituto Ponte.
+# O IP só aceita aluno que esteja, no mínimo, no 2º ano do ensino médio e que ainda não esteja no 3º.
+# Como o ano da medalha não diz a série, o critério é otimista: quem ganhou medalha no ensino médio no ano X
+# só pode ser elegível em X ou X + 1. Hoje, só entram medalhas do ano anterior ou do ano atual.
+# O servidor aplica a regra com o ano corrente (server/medalhistas.js), sem precisar regerar os dados todo ano.
+# Não vale para medalhistas do ensino fundamental.
+anos_de_elegibilidade: 1   # ano da medalha >= ano atual - 1
+
+# Etapa do medalhista (config/recortes.yaml): EM e as etapas pós-fundamental já são ensino médio pela categoria da prova.
+etapas_ensino_medio: [EM, tecnico_superior, superior]
+# Provas de nível misto (OBI Programação 1 e 2: EF e EM): ensino médio só se o nome da escola indicar.
+etapa_ambigua: EF2_EM
+# Padrões de escola de ensino médio (aplicados ao nome sem acento, em maiúsculas).
+padroes_escola_ensino_medio:
+  - 'INSTITUTO FEDERAL'
+  - '\bIF[A-Z]*\b'
+  - 'CEFET'
+  - '\bETEC\b'
+  - '\bETE\b'
+  - 'TECNIC'
+  - 'ENSINO MEDIO'
+  - 'ESCOLA ESTADUAL'
+  - 'COLEGIO ESTADUAL'
+  - 'CENTRO ESTADUAL'
+  - '\bEEEM\b'
+  - '\bEEEP\b'
+  - '\bCEEP\b'
+  - '\bEEM\b'
+  - 'COLEGIO MILITAR'
+  - 'COLEGIO DE APLICACAO'
+  - 'SENAI'
+  - 'LICEU'

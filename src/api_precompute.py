@@ -22,7 +22,9 @@ import pandas as pd
 import yaml
 
 from caminhos import RAIZ
+from elegibilidade import ensino_medio
 from lgpd import carregar_sal, sha256
+from recortes import anexar_etapa
 
 INTERIM = RAIZ / "data/interim"
 SAIDA = RAIZ / "data/api"
@@ -267,12 +269,14 @@ nome_escola_inep = nomes_escola["no_escola"].to_dict()
 mi["escola"] = [nome_escola_inep.get(e) or str(raw).title() for e, raw in zip(mi["escola_inep"], mi["escola_nome"])]
 ordem = {"Ouro": 0, "Prata": 1, "Bronze": 2}
 mi["_o"] = mi["medalha"].map(ordem)
+mi = anexar_etapa(mi)
+mi["ensino_medio"] = [ensino_medio(e, n) for e, n in zip(mi["etapa"], mi["escola_nome"])]
 for uf, grupo in mi.groupby("uf"):
     por_municipio = {}
     for co, g in grupo.sort_values(["_o", "ano"], ascending=[True, False]).groupby("co_municipio"):
         por_municipio[co] = [{"pseudonimo": r.pseudonimo, "nome": r.nome, "medalha": r.medalha, "olimpiada": r.olimpiada,
                               "ano": int(r.ano), "escola": r.escola, "escola_inep": None if pd.isna(r.escola_inep) else r.escola_inep,
-                              "fonte": fonte_oficial(r.olimpiada, int(r.ano))}
+                              "fonte": fonte_oficial(r.olimpiada, int(r.ano)), "ensino_medio": bool(r.ensino_medio)}
                              for r in g.itertuples()]
     gravar(PRIVADO / f"{uf}.json", por_municipio)
 

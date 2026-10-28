@@ -725,8 +725,12 @@ function desenharListaMedalhistas(secao, codigo) {
     secao.append("p").attr("class", "nota-painel").text(
         dados.identificado ? "Lista com nomes completos. Acesso restrito à coordenação do IP; abertura registrada."
             : "Alunos pseudonimizados (iniciais e código). Abertura registrada para auditoria.");
+    if (dados.fora_do_criterio) {
+        secao.append("p").attr("class", "nota-painel").text(
+            formatoInteiro.format(dados.fora_do_criterio) + " medalhista(s) do ensino médio fora do critério de elegibilidade (medalha anterior ao ano passado) não aparecem.");
+    }
     if (!dados.lista.length) {
-        secao.append("p").text("Nenhum medalhista vinculado a este município.");
+        secao.append("p").text("Nenhum medalhista elegível vinculado a este município.");
         return;
     }
     const t = secao.append("div").attr("class", "rolagem-tabela").append("table");
