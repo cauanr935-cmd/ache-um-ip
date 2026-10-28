@@ -80,12 +80,17 @@
                 <label>Ano
                     <select id="fAno"></select>
                 </label>
-                <label>Rede
-                    <select id="fRede"></select>
-                </label>
                 <label class="filtro-renda">
                     <input type="checkbox" id="fRenda">
                     Renda per capita ≤ 1,5 SM (estimado)
+                </label>
+                <label>INSE das escolas
+                    <select id="fINSE" title="Filtra a lista de escolas do painel do município pelo nível socioeconômico (INEP)">
+                        <option value="todos">Todos os níveis</option>
+                        <option value="baixo">Baixo (níveis I a III)</option>
+                        <option value="medio">Médio (níveis IV e V)</option>
+                        <option value="alto">Alto (níveis VI e VII)</option>
+                    </select>
                 </label>
                 <label class="filtro-renda filtro-alunos-ip">
                     <input type="checkbox" id="fAlunosIP">

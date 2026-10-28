@@ -7,13 +7,11 @@ function iniciarFiltros(filtros, aoMudar) {
         etapa: document.getElementById("fEtapa"),
         sexo: document.getElementById("fSexo"),
         ano: document.getElementById("fAno"),
-        rede: document.getElementById("fRede"),
     };
     const campoRenda = document.getElementById("fRenda");
     const aviso = document.getElementById("filtrosAviso");
     const motivos = [];
 
-    const ROTULO_REDE = { publica: "Pública", privada: "Privada", todas: "Todas" };
     const nota = document.getElementById("filtrosNota");
 
     function opcao(valor, texto) {
@@ -49,18 +47,12 @@ function iniciarFiltros(filtros, aoMudar) {
         campos.ano.innerHTML = "";
         prova.anos.forEach(function (ano) { campos.ano.appendChild(opcao(ano, ano === "todos" ? "Todos (2016 a 2025)" : ano)); });
 
-        if (prova.redes.indexOf(filtros.rede) === -1) {
-            filtros.rede = prova.redes[0];
-            motivos.push(prova.motivo_rede || ("A rede foi ajustada para " + ROTULO_REDE[filtros.rede].toLowerCase() + ", disponível para " + prova.nome + "."));
-        }
-        campos.rede.innerHTML = "";
-        Object.keys(ROTULO_REDE).forEach(function (chave) {
-            const o = opcao(chave, ROTULO_REDE[chave]);
-            const permitido = prova.redes.indexOf(chave) !== -1;
-            o.disabled = !permitido;
-            o.title = permitido ? "" : (prova.motivo_rede || "Sem dados desta rede para " + prova.nome + ".");
-            campos.rede.appendChild(o);
-        });
+        if (prova.nota) motivos.push(prova.nota);
+
+        // Todos os alunos de interesse são de escolas públicas: não há filtro de rede, vale sempre a pública.
+        // Quando a prova não informa a rede (OBI), usa a única opção dela e avisa.
+        filtros.rede = prova.redes.indexOf("publica") !== -1 ? "publica" : prova.redes[0];
+        if (filtros.rede !== "publica") motivos.push(prova.motivo_rede || ("Esta prova não separa a rede da escola: o mapa mostra todas as redes."));
 
         // Sexo e renda não cruzam com as notas e medalhas desta base (specs.md 4.4): ficam desabilitados.
         Array.from(campos.sexo.options).forEach(function (o) {
@@ -77,7 +69,6 @@ function iniciarFiltros(filtros, aoMudar) {
         campos.etapa.value = filtros.etapa;
         campos.sexo.value = filtros.sexo;
         campos.ano.value = String(filtros.ano);
-        campos.rede.value = filtros.rede;
         campoRenda.checked = filtros.renda;
         aviso.textContent = motivos.join(" ");
         aviso.hidden = motivos.length === 0;
@@ -95,7 +86,6 @@ function iniciarFiltros(filtros, aoMudar) {
     campos.etapa.addEventListener("change", aoAlterar("etapa", function () { return campos.etapa.value; }));
     campos.sexo.addEventListener("change", aoAlterar("sexo", function () { return campos.sexo.value; }));
     campos.ano.addEventListener("change", aoAlterar("ano", function () { return campos.ano.value === "todos" ? "todos" : Number(campos.ano.value); }));
-    campos.rede.addEventListener("change", aoAlterar("rede", function () { return campos.rede.value; }));
     campoRenda.addEventListener("change", aoAlterar("renda", function () { return campoRenda.checked; }));
 
     // No mobile os filtros ficam numa gaveta (specs.md 4.4).

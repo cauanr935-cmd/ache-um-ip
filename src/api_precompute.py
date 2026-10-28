@@ -96,6 +96,31 @@ enem["co_municipio"] = enem["co_municipio"].astype(str)
 med = pd.read_parquet(INTERIM / "agg_medalhas_municipio.parquet")
 med["co_municipio"] = med["co_municipio"].astype(str)
 
+# ---------- INSE por escola (INEP, indicador de nível socioeconômico; maior = mais favorecido) ----------
+INSE_DIR = RAIZ / "data/raw/inep/indicadores/inse"
+INSE_ANOS = [2023, 2021, 2019]
+GRUPOS_INSE = {"baixo": ("I", "II", "III"), "medio": ("IV", "V"), "alto": ("VI", "VII")}
+
+
+def carregar_inse(ano):
+    """Uma linha por escola: inep, municipio, uf, publica, n, valor, nivel (algarismo romano)."""
+    arq = {2023: "INSE_2023_escolas.xlsx", 2021: "INSE_2021_escolas.xlsx", 2019: "INSE_2019_ESCOLAS.xlsx"}[ano]
+    d = pd.read_excel(INSE_DIR / arq, sheet_name=0)
+    if ano == 2019:
+        d = d.rename(columns={"CO_ESCOLA": "ID_ESCOLA", "TP_DEPENDENCIA": "TP_TIPO_REDE", "INSE_VALOR_ABSOLUTO": "MEDIA_INSE", "CO_UF": "CO_UF"})
+    out = pd.DataFrame({"inep": d["ID_ESCOLA"].astype(str), "municipio": d["CO_MUNICIPIO"].astype(str), "publica": d["TP_TIPO_REDE"].isin([1, 2, 3]),
+                        "n": d["QTD_ALUNOS_INSE"], "valor": d["MEDIA_INSE"], "nivel": d["INSE_CLASSIFICACAO"].astype(str).str.replace("Nível ", "", regex=False)})
+    out["ano"] = ano
+    return out.dropna(subset=["valor"])
+
+
+INSE_POR_ANO = {a: carregar_inse(a) for a in INSE_ANOS}
+# Escola: o dado mais recente disponível (2023; 2021 e 2019 só para quem não tem 2023).
+INSE_ESCOLA = {}
+for a in INSE_ANOS:
+    for r in INSE_POR_ANO[a].itertuples():
+        INSE_ESCOLA.setdefault(r.inep, {"ano": int(r.ano), "valor": round(float(r.valor), 2), "nivel": r.nivel, "n": None if pd.isna(r.n) else int(r.n)})
+
 for pasta_antiga in (SAIDA, PRIVADO):
     if pasta_antiga.exists():
         shutil.rmtree(pasta_antiga)
@@ -181,6 +206,28 @@ for chave, (olimp, redes) in nomes_olimpiada.items():
                 u["codigo"] = u["uf"].map(cod_uf)
                 emitir(chave.lower(), etapa, ano, rede, u[["codigo", "valor", "n"]], m[["codigo", "valor", "n"]], n_min=N_MIN_OLIMPIADAS)
 
+# ---------- INSE (média ponderada pelo nº de alunos, escolas públicas) ----------
+catalogo["provas"]["inse"] = {
+    "nome": "INSE", "etapas": ["ef2", "em"], "anos": INSE_ANOS, "redes": ["publica"],
+    "motivo_etapa": None,
+    "metrica": {"titulo": "INSE médio das escolas públicas (menor = mais vulnerável)", "curta": "INSE médio", "casas": 2},
+    "nota": "O INSE do INEP é por escola e não separa as etapas: Ensino Fundamental 2 e Ensino Médio mostram o mesmo valor.",
+}
+for ano, d in INSE_POR_ANO.items():
+    d = d[d["publica"]].copy()
+    d["peso"] = d["n"].fillna(0)
+    d["vp"] = d["valor"] * d["peso"]
+    d["uf_cod"] = d["municipio"].str[:2]
+
+    def media(g, chave):
+        a = g.groupby(chave).agg(vp=("vp", "sum"), n=("peso", "sum")).reset_index().rename(columns={chave: "codigo"})
+        a["valor"] = a["vp"] / a["n"].where(a["n"] > 0)
+        return a[["codigo", "valor", "n"]]
+
+    mun_df, uf_df = media(d, "municipio"), media(d, "uf_cod")
+    for etapa in ("ef2", "em"):
+        emitir("inse", etapa, ano, "publica", uf_df, mun_df)
+
 gravar(SAIDA / "recortes.json", catalogo)
 
 # ---------- Painel do municipio ----------
@@ -218,7 +265,8 @@ for uf in UFS:
             painel[co]["escolas"][etapa.lower()] = {
                 "ano": int(ano_esc[etapa]),
                 "lista": [{"inep": r.co_entidade, "nome": r.no_escola, "rede": str(r.rede_detalhe or r.rede).capitalize(),
-                           "nota": num(r.nota, 1), "destaque": bool(r.nota >= corte or r.co_entidade in COM_MEDALHISTA)} for r in g.itertuples()],
+                           "nota": num(r.nota, 1), "destaque": bool(r.nota >= corte or r.co_entidade in COM_MEDALHISTA),
+                           "inse": INSE_ESCOLA.get(r.co_entidade)} for r in g.itertuples()],
             }
     for co, d in painel.items():
         for etapa in ("EF2", "EM"):
@@ -260,7 +308,7 @@ for uf, grupo in ficha.groupby("uf"):
                                        "aprovacao": num(r.taxa_aprovacao, 1)} for r in ge.itertuples()]
         fichas[inep] = {"nome": ultimo["no_escola"], "rede": str(ultimo["rede_detalhe"] or ultimo["rede"]).capitalize(),
                         "municipio": ultimo["co_municipio"], "uf": uf, "series": series,
-                        "tem_medalhista": inep in COM_MEDALHISTA,
+                        "tem_medalhista": inep in COM_MEDALHISTA, "inse": INSE_ESCOLA.get(inep),
                         "n_medalhistas": int(n_medalhistas_escola.get(inep, 0))}
     gravar(SAIDA / "escola" / f"{uf}.json", fichas)
 

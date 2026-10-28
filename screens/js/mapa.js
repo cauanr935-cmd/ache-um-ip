@@ -10,6 +10,13 @@ const CORES_CLASSES = [1, 2, 3, 4, 5].map(function (i) {
 });
 const COR_SEM_DADO = "var(--mapa-sem-dado)";
 
+// INSE (INEP): Nível I (mais vulnerável) a VII. Os grupos do filtro da lista de escolas.
+const GRUPOS_INSE = { baixo: ["I", "II", "III"], medio: ["IV", "V"], alto: ["VI", "VII"] };
+
+function textoINSE(inse) {
+    return inse ? "Nível " + inse.nivel + " (" + formatoValor.format(inse.valor) + ")" : "-";
+}
+
 const formatoValor = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 const formatoInteiro = new Intl.NumberFormat("pt-BR");
 
@@ -24,6 +31,7 @@ const estado = {
     fichas: new Map(),
     favoritos: [],
     listaMedalhistas: null,     // {codigo, dados}: só existe depois de o usuário pedir a lista
+    filtroINSE: "todos",        // lista de escolas do município: todos | baixo | medio | alto (nível socioeconômico, INEP)
     alunosIP: null,             // municípios com alunos do Instituto Ponte (filtro de pinos); carregado sob demanda
     dadosUF: new Map(),
     dadosMunicipio: new Map(),
@@ -48,6 +56,7 @@ window.addEventListener("load", async function () {
         iniciarMapa(topojson.feature(topo, topo.objects.ufs), dadosUF);
         iniciarFiltros(estado.filtros, function () { estado.acoes.aplicarFiltros(); });
         iniciarFiltroAlunosIP();
+        iniciarFiltroINSE();
         estado.favoritos = await listarFavoritos().catch(function () { return []; });
         iniciarBusca();
     } catch (err) {
@@ -611,6 +620,16 @@ function iniciarFiltroAlunosIP() {
     });
 }
 
+// Filtro "INSE das escolas": limita a lista de escolas do painel do município a um grupo de nível socioeconômico.
+function iniciarFiltroINSE() {
+    const campo = document.getElementById("fINSE");
+    campo.addEventListener("change", function () {
+        estado.filtroINSE = campo.value;
+        estado.paginaEscolas = 0;
+        atualizarPainel();
+    });
+}
+
 function desenharSecoesMunicipio(painel, p) {
     function secao(titulo) {
         const s = painel.append("section").attr("class", "secao-painel");
@@ -649,16 +668,26 @@ function desenharSecoesMunicipio(painel, p) {
     // Escolas ranqueadas pelo Saeb, com paginação (specs.md 4.3).
     const escolas = secao("Escolas (ranking Saeb" + (p.escolas ? ", " + p.escolas.ano : "") + ")");
     if (p.escolas && p.escolas.lista.length) {
-        const total = p.escolas.lista.length;
-        const paginas = Math.ceil(total / ESCOLAS_POR_PAGINA);
+        // A posição é a do ranking completo; o filtro de INSE só esconde linhas.
+        const grupo = GRUPOS_INSE[estado.filtroINSE];
+        const lista = p.escolas.lista.map(function (e, i) { return { e: e, pos: i + 1 }; })
+            .filter(function (x) { return !grupo || (x.e.inse && grupo.indexOf(x.e.inse.nivel) !== -1); });
+        const total = lista.length;
+        if (grupo) escolas.append("p").attr("class", "nota-painel").text("Filtro de INSE ativo: " + total + " de " + p.escolas.lista.length + " escolas (nível " + grupo[0] + (grupo.length > 1 ? " a " + grupo[grupo.length - 1] : "") + ").");
+        const paginas = Math.max(1, Math.ceil(total / ESCOLAS_POR_PAGINA));
         estado.paginaEscolas = Math.min(estado.paginaEscolas, paginas - 1);
         const inicio = estado.paginaEscolas * ESCOLAS_POR_PAGINA;
-        tabela(escolas, "Escolas públicas do município ranqueadas pela nota do Saeb",
-            ["#", "INEP", "Escola", "Rede / selo", "Nota"],
-            p.escolas.lista.slice(inicio, inicio + ESCOLAS_POR_PAGINA).map(function (e, i) {
-                return [inicio + i + 1, e.inep, { texto: e.nome, acao: function () { abrirFichaEscola(e.inep); } },
-                    e.destaque ? "Destaque ★" : e.rede, formatoValor.format(e.nota)];
-            }));
+        if (total) {
+            tabela(escolas, "Escolas públicas do município ranqueadas pela nota do Saeb, com o INSE de cada uma",
+                ["#", "INEP", "Escola", "Rede / selo", "Nota", "INSE"],
+                lista.slice(inicio, inicio + ESCOLAS_POR_PAGINA).map(function (x) {
+                    const e = x.e;
+                    return [x.pos, e.inep, { texto: e.nome, acao: function () { abrirFichaEscola(e.inep); } },
+                        e.destaque ? "Destaque ★" : e.rede, formatoValor.format(e.nota), textoINSE(e.inse)];
+                }));
+        } else {
+            escolas.append("p").text("Nenhuma escola deste município no grupo de INSE escolhido.");
+        }
         if (paginas > 1) {
             const nav = escolas.append("div").attr("class", "paginacao");
             nav.append("button").attr("type", "button").attr("class", "botao-secundario").text("Anterior")
@@ -764,6 +793,7 @@ function desenharFichaEscola(painel, mun) {
 
     const dl = painel.append("dl");
     [["Código INEP", ficha.inep], ["Rede", ficha.rede], ["Município", ficha.municipio_nome + " (" + ficha.uf + ")"],
+        ["INSE" + (ficha.inse ? " (" + ficha.inse.ano + ")" : ""), textoINSE(ficha.inse)],
         ["Medalhistas", ficha.n_medalhistas ? formatoInteiro.format(ficha.n_medalhistas) + " aluno(s) vinculados" : "nenhum vinculado"]]
         .forEach(function (campo) { dl.append("dt").text(campo[0]); dl.append("dd").text(campo[1]); });
     botaoFavorito(painel, "escola", ficha.inep, ficha.nome);
