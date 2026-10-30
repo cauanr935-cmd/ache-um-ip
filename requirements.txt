@@ -12,3 +12,4 @@ scikit-learn==1.9.1
 statsmodels==0.15.0
 Unidecode==1.4.0
 openpyxl==3.1.5
+streamlit==1.66.1
