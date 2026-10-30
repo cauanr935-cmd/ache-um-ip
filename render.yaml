@@ -1,0 +1,28 @@
+# Blueprint opcional do Render: cria o Web Service do site (Node + Express). Os segredos ficam no painel do Render.
+services:
+  - type: web
+    name: ache-um-ip
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /auth/config
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: NODE_ENV
+        value: production
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: ALLOWED_EMAIL_DOMAINS
+        value: institutoponte.org.br
+      - key: ALLOWED_EMAILS
+        sync: false
+      - key: ALUNO_IDENTIFICADO
+        value: "false"
+      - key: KV_REST_API_URL
+        sync: false
+      - key: KV_REST_API_TOKEN
+        sync: false
